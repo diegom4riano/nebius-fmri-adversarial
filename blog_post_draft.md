@@ -4,95 +4,175 @@
 
 ---
 
-A model that classifies brain activity with 77% balanced accuracy sounds reasonably robust. Run AutoAttack against it — the current gold standard for adversarial robustness evaluation (Croce & Hein, 2020), trusted by the community precisely because it combines the best first-order and black-box strategies into a single ensemble — and it reports 17.9% attack success rate. Run KAPPA, the second-order attack I developed, and the same model shows **60.7% vulnerability** with a perturbation smaller than the noise floor of the MRI acquisition.
+A model that classifies brain activity with 77% balanced accuracy sounds reasonably robust. Run AutoAttack against it — the current gold standard for adversarial robustness evaluation (Croce & Hein, 2020) — and it reports 17.9% attack success. Run KAPPA, the second-order attack I developed, and the same model shows **60.7% vulnerability** with a perturbation smaller than the noise floor of the MRI acquisition.
 
-AutoAttack missed more than two-thirds of those cases.
-
-This is not a problem with the model. It is a structural limitation of every attack that relies solely on gradient direction — including the current state of the art.
+AutoAttack missed more than two-thirds of those cases. This is not a problem with the model. It is a structural limitation of every attack that relies solely on gradient direction — including the current state of the art.
 
 ---
 
 ## The Shared Limitation of First-Order Attacks
 
-The adversarial attack landscape today spans a spectrum of sophistication. At the classic end, **PGD** (Madry et al., 2018) takes a sign-gradient step and projects onto the L∞ ball — fast, simple, foundational. At the state of the art, **AutoAttack** (Croce & Hein, 2020) combines four strategies: APGD-CE (adaptive step-size PGD with cross-entropy loss), APGD-DLR (PGD with difference-of-logits ratio loss), FAB-T (boundary attack minimizing perturbation norm), and Square Attack (black-box random search). AutoAttack was specifically designed to overcome the known weaknesses of vanilla PGD — step size sensitivity, loss function choice, and local optima.
+The adversarial attack landscape spans a spectrum of sophistication. At the classic end, **PGD** (Madry et al., 2018) takes a sign-gradient step and projects onto the L∞ ball. At the state of the art, **AutoAttack** (Croce & Hein, 2020) combines four strategies: APGD-CE (adaptive step-size PGD), APGD-DLR, FAB-T (boundary minimization), and Square Attack (black-box random search). AutoAttack was specifically designed to overcome the known weaknesses of vanilla PGD — step size sensitivity, loss function choice, and local optima.
 
-Yet all of these attacks share a fundamental property: **they use only first-order information**. Gradient direction. No curvature. APGD's adaptive step scheduler makes PGD steps smarter, but it cannot fix a misleading gradient direction — and gradient directions are systematically misleading on ill-conditioned loss surfaces.
+Yet all of these attacks share a fundamental property: **they use only first-order information**. APGD's adaptive step scheduler makes gradient steps smarter, but it cannot fix a misleading gradient direction — and gradient directions are systematically misleading on ill-conditioned loss surfaces.
 
-When the Hessian condition number κ is large — some loss directions are orders of magnitude steeper than others — gradient steps oscillate in the steep directions and stall in the flat ones. An adaptive step size applied to a misleading direction just oscillates more efficiently. More iterations amplify the problem: at ε=0.001, PGD-500 achieves *lower* ASR than PGD-40. The model appears robust not because it is, but because no first-order method can navigate its geometry.
+When the Hessian condition number κ is large, some loss directions are orders of magnitude steeper than others. Gradient steps oscillate in the steep directions and stall in the flat ones. More iterations amplify the problem rather than fixing it.
 
-I designed **KAPPA** (κ-**A**ware **P**erturbation via **P**roximal **A**pproximation) to address this at the root. KAPPA replaces the gradient step with a Newton step, solved by applying the Conjugate Gradient method to the system:
+I designed **KAPPA** (κ-**A**ware **P**erturbation via **P**roximal **A**pproximation) to address this at the root. Instead of following the gradient, KAPPA computes the Newton direction at each outer iteration — a search direction that accounts for curvature rather than just slope. The Hessian is never explicitly materialized; it is approximated on-the-fly via Hessian-Vector Products computed through double-backward passes, making KAPPA tractable on large models. A proximal regularization term ensures numerical stability in ill-conditioned regions. The full method is described in an upcoming paper and is model-agnostic: it requires only a differentiable PyTorch `forward()`.
 
-```
-(H + λI) δ = −∇L
-```
-
-where H is the loss Hessian (approximated via Hessian-Vector Products using double-backward passes), λ is a regularizer set adaptively via the Rayleigh quotient to guarantee positive definiteness, and δ is the resulting search direction. The Newton step accounts for curvature explicitly: it rescales the gradient by the inverse Hessian, moving efficiently even where the landscape is maximally ill-conditioned.
-
-The central hypothesis: **KAPPA's advantage over the state of the art is predicted by the Hessian condition number κ**. When κ ≈ 1, curvature adds no information and KAPPA is equivalent to — or slower than — first-order attacks. When κ ≫ 1, KAPPA finds adversarial examples that the entire first-order family cannot.
+The central hypothesis: **KAPPA's advantage over the state of the art is predicted by κ**. When κ ≈ 1, Newton and gradient directions coincide — KAPPA adds overhead without benefit. When κ ≫ 1, the Newton direction finds adversarial examples that no first-order method can reach.
 
 ---
 
-## Experimental Design: Controlling for κ
+## Two Clinical Models, Designed to Test the Hypothesis
 
-To validate the κ hypothesis, I needed two architectures with meaningfully different condition numbers while remaining clinically relevant. I trained both models from scratch.
+To validate the κ hypothesis, I needed two architectures with meaningfully different condition numbers. I trained both from scratch.
 
 **ECG Rhythm Classifier — PhysioNet/CinC 2017**
-A 13-block dilated 1D CNN following the Han et al. architecture for 4-class rhythm classification (Normal, AF, Other, Noisy). Every convolutional block is followed by Batch Normalization. BN constrains gradient magnitudes across layers, keeping the loss surface well-conditioned. Estimated κ ≈ 1. Test accuracy: 87.5%.
+A 13-block dilated 1D CNN (Han et al. architecture) for 4-class rhythm classification. Every convolutional block is followed by Batch Normalization. BN normalizes gradient magnitudes layer-by-layer, keeping the loss surface well-conditioned. Estimated κ ≈ 1. Test accuracy: 87.5%.
 
 **fMRI Sex Classifier — STAGIN on HCP**
-A Spatio-Temporal Attention Graph Isomorphism Network (Kim & Ye) trained on 1,080 resting-state fMRI scans from the Human Connectome Project. The pipeline involves parcellating raw CIFTI files into 333 ROIs (Gordon atlas), computing dynamic functional connectivity matrices via a 50-TR sliding window (~50 windows per 1,200-TR acquisition), and training a hybrid GIN + self-attention + GRU architecture with no normalization layers anywhere in the network. Training used OneCycleLR scheduling, L2 regularization (λ=1e-5), and early stopping with patience=30. Estimated condition number: κ = **178,695**. Test BACC: 77.2%.
+A Spatio-Temporal Attention Graph Isomorphism Network (Kim & Ye) trained on 1,080 resting-state fMRI scans from the Human Connectome Project. The preprocessing pipeline: CIFTI files → 333 ROIs (Gordon atlas) → 50-TR sliding-window functional connectivity matrices (~50 windows per 1,200-TR acquisition). The model combines 4 GIN layers, multi-head self-attention, and a GRU over time — **no normalization layers anywhere**. Training used OneCycleLR scheduling, L2 regularization (λ=1e-5), and early stopping with patience=30. Estimated condition number: κ = **178,695**. Test BACC: 77.2%.
 
-The prediction is unambiguous: KAPPA should underperform PGD on the ECG model and dramatically outperform it on STAGIN.
+> *Figure 1 — Training curves for both models. The STAGIN loss shows the characteristic noisy convergence of un-normalized GNN+RNN architectures; the ECG CNN converges smoothly under BN.*
+
+![training_curve](figures/training_curve.png)
+
+The prediction is unambiguous: KAPPA should underperform first-order attacks on the ECG model (κ ≈ 1) and dramatically outperform them on STAGIN (κ ≫ 1).
 
 ---
 
-## Running KAPPA at Scale: Why the H200 Was Not Optional
+## The System Architecture
 
-Computing Hessian-Vector Products requires retaining the full computational graph through two backward passes. On STAGIN — with batch=32 subjects, each carrying a `[50 × 333 × 333]` adjacency tensor and a `[1200 × 333]` timeseries — the peak VRAM during KAPPA's backward passes hit **86,876 MB**.
+The full pipeline runs across three components:
 
-An NVIDIA A100 has 80 GB. This experiment cannot run on an A100.
+```
+Local Machine                      Nebius Cloud
+─────────────────                  ──────────────────────────────────
+precision-med/                     H200 SXM (141 GB HBM3e)
+  hessian.py  ──┐                  ┌── test_fmri_model.py
+  STAGIN.py   ──┤                  │     └─ KAPPA × 6 attacks × 5 ε
+  configs/    ──┤                  │     └─ partial save after each ε
+                │   Nebius AI Job  │
+                ├─── deploy ──────►│
+                │                  └── results → S3
+                │
+                │   S3 (488 GB HCP data + results)
+                ├─── upload-data ──► precision-med-hcp/
+                └─── download ◄──── output/attack_results.json
+```
 
-The **Nebius H200 SXM** (141 GB HBM3e) was the enabling hardware. Deployment via Nebius Serverless AI Jobs required a single command, with the S3-compatible bucket mounted directly as a filesystem:
+The entire workflow is three Makefile targets:
+
+```makefile
+make upload-data       # sync preprocessed HCP FC matrices to S3 (~488 GB, once)
+make deploy-attack     # launch H200 job, write results directly to S3
+make download-results  # pull attack_results.json when job completes
+
+# Resume a failed job from the last completed epsilon:
+make deploy-attack RESUME_RUN_ID=20260628_035830
+```
+
+Results write directly to the S3-mounted filesystem after each epsilon completes. A job crash loses at most one epsilon's work — the resume mechanism reloads the partial JSON and skips already-completed runs.
+
+---
+
+## Why the H200 Was Not Optional
+
+Computing Hessian-Vector Products requires retaining the full computational graph through two backward passes. On STAGIN with batch=32:
+
+| Resource | Value |
+|---|---|
+| Input per subject | `[50 × 333 × 333]` adjacency + `[1200 × 333]` timeseries |
+| Peak VRAM (KAPPA backward) | **86,876 MB** |
+| A100 SXM capacity | 80,000 MB |
+| H200 SXM capacity | 141,000 MB |
+| Headroom on H200 | ~54 GB |
+
+An A100 cannot run this experiment. The H200 SXM on Nebius Serverless AI was not a preference — it was the minimum viable GPU.
+
+Deployment was a single CLI call:
 
 ```bash
 nebius ai job create \
   --platform gpu-h200-sxm \
   --preset 1gpu-16vcpu-200gb \
-  --volume storagebucket-...:/workspace/data \
+  --volume storagebucket-e005764888512084834516:/workspace/data \
+  --container-image pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime \
   --container-command bash \
   --args '-c "pip install -r requirements.txt && \
               python test_fmri_model.py \
               --config configs/config.yaml \
               --output-dir /workspace/data/output \
-              --run-id 20260628_035830"'
+              --run-id 20260628_035830"' \
+  --timeout 86400
 ```
 
-Results write directly to S3 after each epsilon completes (partial save), so job failures are recoverable without restarting the full sweep. A `RESUME_RUN_ID` flag in the Makefile allows picking up from any checkpoint. The full 6-attack × 5-epsilon sweep across 216 test subjects ran in ~12 hours at well under $100.
+No cluster setup, no persistent VM billing, no storage provisioning beyond the S3 bucket. Total job runtime: ~12 hours. Total cost: under $100.
 
-Three non-trivial engineering fixes were required to get all six attacks running reliably on STAGIN:
+---
 
-- **ForwardWrapper padding**: AutoAttack internally calls `forward()` with sub-batches smaller than B. STAGIN's GRU produces hidden states of fixed size B, causing `torch.cat` to fail. Fix: pad the input to B with zeros and return `logits[:n]`.
-- **cuDNN RNN training mode**: PyTorch's cuDNN backend requires `model.train()` during RNN backward passes. Setting `model.eval()` inside `forward()` silently corrupts KAPPA's second-order gradients. Fix: maintain `train()` mode throughout the attack sweep.
-- **Binary AutoAttack**: AutoAttack's standard configuration includes DLR and FAB-T losses, which require ≥3 classes. Fix: `version='custom', attacks_to_run=['apgd-ce', 'square']`.
+## The Honest Part: Three Bugs That Cost a Full H200 Job
+
+Getting six attack libraries to cooperate on a GRU-based GNN took more iteration than expected. Each of the three failures below was silent — no crash, no error, just wrong results — which made them expensive to discover on a 6-hour H200 job.
+
+**1. Sub-batch size mismatch (discovered after 6 hours)**
+
+The first full job completed cleanly — then I checked the output and found that AutoAttack had reported 0% ASR across all epsilons. No exception was raised. Digging into AutoAttack's internals revealed that it internally splits batches into sub-batches and calls `forward(v_sub)` with fewer samples than the original batch B. STAGIN's GRU produces hidden states fixed at size B; `torch.cat([v, time_encoding], dim=3)` silently skipped the incompatible tensors.
+
+The fix: a `ForwardWrapper` that pads the input back to B with zeros and returns only the relevant logits:
+
+```python
+class ForwardWrapper(torch.nn.Module):
+    def forward(self, v):
+        n, B = v.shape[0], self._B
+        if n < B:
+            pad = torch.zeros((B - n,) + v.shape[1:], device=v.device, dtype=v.dtype)
+            v = torch.cat([v, pad], dim=0)
+        self.model.train()
+        logits, _, _, _ = self.model(v, self._a, self._t, self.endpoints)
+        return logits[:n]
+```
+
+**2. cuDNN RNN backward requires training mode (discovered mid-sweep)**
+
+C&W L2 completed but reported 0% ASR on every batch. The root cause: PyTorch's cuDNN backend requires `model.train()` during RNN backward passes. The original code called `model.eval()` inside `forward()` — a standard inference pattern — which restores eval mode before backward runs, silently zeroing the gradients. Fix: keep `train()` throughout the entire attack sweep, never restoring `eval()`.
+
+**3. Binary AutoAttack (warning buried in 10,000 lines of output)**
+
+AutoAttack's standard configuration includes DLR loss and FAB-T, which require ≥3 classes. On a binary classifier these components issue a one-line warning — easily missed — and produce undefined results. Fix:
+
+```python
+adversary = AutoAttack(wrapper, norm="Linf", eps=epsilon,
+                       version="custom",
+                       attacks_to_run=["apgd-ce", "square"],
+                       verbose=False)
+```
+
+After fixing all three, I added a partial save after each epsilon and a `RESUME_RUN_ID` flag so future failures could continue from the last completed checkpoint rather than restarting from zero.
 
 ---
 
 ## Results
 
-Six attacks evaluated: KAPPA (mine), AutoAttack (APGD-CE + Square — current state of the art), APGD-CE (AutoAttack's strongest component), PGD-40, PGD-500 (budget-matched to KAPPA), and C&W L2. Metric: **True ASR** — fraction of Male subjects (n=84) whose predicted class flips to Female after the attack. This targeted metric avoids inflating rates with trivially adversarial examples.
+Six attacks evaluated: KAPPA (mine), AutoAttack (APGD-CE + Square — current state of the art), APGD-CE, PGD-40, PGD-500 (budget-matched to KAPPA), and C&W L2. Metric: **True ASR** — fraction of Male subjects (n=84) whose prediction flips to Female. This targeted metric avoids inflating rates with trivially adversarial examples.
 
-### ECG CNN (κ ≈ 1) — The Baseline
+### ECG CNN (κ ≈ 1) — Baseline Validation
 
-| Method | ε | Steps | True ASR |
-|---|---|---|---|
-| PGD | 10 | 40 | **86.5%** |
-| **KAPPA** | 10 | 5 outer × 10 CG | 72.9% |
-| PGD | 2 | 40 | 24.0% |
-| **KAPPA** | 2 | 5 outer × 50 CG | 21.9% |
+| Method | ε | True ASR |
+|---|---|---|
+| PGD | 10 | **86.5%** |
+| **KAPPA** | 10 | 72.9% |
+| PGD | 2 | 24.0% |
+| **KAPPA** | 2 | 21.9% |
 
-On the BN-normalized ECG model, **PGD outperforms KAPPA**. At ε=2, both methods are equivalent; at ε=10, KAPPA is 13.6 pp worse. This is exactly what the κ hypothesis predicts: when the loss surface is well-conditioned, the Newton direction adds no information, and the overhead of CG iterations makes KAPPA less efficient than PGD. The baseline holds.
+On the BN-normalized ECG model, **PGD outperforms KAPPA**. At ε=2, both are equivalent; at ε=10, KAPPA is 13.6 pp worse. This is exactly what the κ ≈ 1 prediction requires: when the loss surface is well-conditioned, the Newton direction adds no information, and CG overhead makes KAPPA strictly less efficient. The baseline holds — KAPPA does not claim universal superiority.
 
-### STAGIN fMRI (κ = 178,695) — The Main Result
+> *Figure 2 — Confusion matrices: clean model (left), after KAPPA attack (center), after PGD attack (right) on the fMRI test set at ε=0.001. KAPPA flips 51/84 Male subjects; PGD flips 11.*
+
+![confusion matrices](figures/confusion_matrix_clean.png)
+
+### STAGIN fMRI (κ = 178,695) — Main Result
 
 | Attack | ε=0.001 | ε=0.005 | ε=0.01 | ε=0.05 | ε=0.1 |
 |---|---|---|---|---|---|
@@ -103,47 +183,51 @@ On the BN-normalized ECG model, **PGD outperforms KAPPA**. At ε=2, both methods
 | C&W L2 | 16.7% | 18.3% | 18.3% | 18.3% | 18.3% |
 | PGD-500 | 13.1% | 29.3% | 42.7% | 51.2% | 53.7% |
 
-At ε=0.001 — a perturbation smaller than the precision of fMRI preprocessing — the contrast is stark:
+> *Figure 3 — True ASR vs epsilon for all six attacks on STAGIN. KAPPA (solid line) consistently sits above the first-order family, with the gap most pronounced at tight epsilon budgets.*
 
-- **AutoAttack** (state of the art): **17.9% ASR** in 2,762s
-- **APGD-CE** (AutoAttack's strongest component): **22.6%** in 783s
-- **KAPPA**: **60.7%** in 741s
+![asr_vs_epsilon](figures/asr_vs_epsilon.png)
 
-KAPPA finds **3.4× more adversarial examples than AutoAttack** in less wall-clock time. And this is with AutoAttack's full adaptive machinery — adaptive step sizes, restart strategies, and two complementary attack objectives. The advantage is not computational: KAPPA uses roughly the same budget as APGD-CE. The advantage is structural: it uses curvature information that no first-order method has access to.
+At ε=0.001 — a perturbation imperceptible to preprocessing pipelines:
 
-The budget-matched baseline makes this precise: **PGD-500 achieves 13.1%** spending 3,771s — 5× more time than KAPPA at 741s. Remarkably, PGD-500 is also worse than PGD-40 (31.0%) at this epsilon. With κ=178,695, more gradient iterations amplify oscillation; the model appears robust under any first-order evaluation simply because the attacks cannot navigate its loss surface.
+| Comparison | KAPPA | Competitor | Gap |
+|---|---|---|---|
+| vs AutoAttack (SOTA) | 60.7% | 17.9% | **3.4×** |
+| vs APGD-CE (SOTA component) | 60.7% | 22.6% | **2.7×** |
+| vs PGD-500 (budget-matched) | 60.7% | 13.1% | **4.6×** |
+| Wall-clock time | 741s | 3,771s (PGD-500) | KAPPA is **5× faster** |
 
-Three patterns emerge across the full epsilon sweep:
+**PGD-500 is worse than PGD-40** (13.1% vs 31.0%) at this epsilon. With κ=178,695, more gradient iterations amplify oscillation; the model appears robust under any first-order evaluation simply because the attacks cannot navigate its loss surface.
 
-1. **KAPPA dominates at tight budgets.** At ε≤0.005, KAPPA leads AutoAttack by 2.7–3.7×. This is the clinically relevant regime: perturbations small enough to evade human review.
-2. **The gap narrows mid-range.** At ε=0.01, first-order methods partially recover (APGD-CE reaches 29.3%, KAPPA 50%) as the larger epsilon ball gives gradient methods enough room to work. The advantage drops to ~1.7×.
-3. **KAPPA reopens the gap at large epsilon.** At ε=0.05–0.1, KAPPA jumps to 93%+ while first-order methods plateau near 53–66%. Even with a generous budget, no first-order attack saturates the model's vulnerability — KAPPA does.
+Three patterns across the sweep:
+1. **Tight budgets (ε≤0.005):** KAPPA leads AutoAttack by 2.7–3.7×. This is the clinically relevant regime: perturbations small enough to evade human inspection.
+2. **Mid-range (ε=0.01):** First-order methods partially recover. APGD-CE reaches 29.3% vs KAPPA's 50% — a 1.7× gap — as the larger epsilon ball gives gradient methods more room.
+3. **Large epsilon (ε=0.05–0.1):** KAPPA saturates at 93%+. First-order attacks plateau near 53–66%, unable to reach the adversarial region even with an unconstrained budget.
 
-C&W L2 flatlines at 18% across all epsilons. STAGIN's vulnerability is structurally aligned with L∞ directions, not L2 — L2-norm attacks cannot exploit it regardless of budget.
+C&W L2 flatlines at ~18% across all epsilons — STAGIN's vulnerability is structurally aligned with L∞ directions, not L2.
 
 ---
 
-## The Implication for Medical AI Robustness
+## What This Means for Medical AI Robustness
 
-AutoAttack was designed to be the hardest reasonable first-order benchmark — an ensemble that patches the known weaknesses of vanilla PGD. On STAGIN at ε=0.001, it reports 17.9% ASR. KAPPA reports 60.7%. **A model evaluated as having moderate vulnerability under the current gold standard has 3.4× greater true vulnerability.**
+AutoAttack was designed to be the hardest practical first-order benchmark. On STAGIN at ε=0.001, it reports 17.9%. KAPPA reports 60.7%. **A model evaluated as having moderate vulnerability under the current gold standard has 3.4× greater true vulnerability.**
 
-This is not a failure of AutoAttack. AutoAttack is exactly what it claims to be: the best practical first-order evaluator. The gap is a consequence of the model architecture, not the attack design. And this is a systemic issue.
+This is not a failure of AutoAttack. It is a consequence of architecture. The adversarial ML literature has been built almost entirely on CNN architectures with Batch Normalization — ResNets, VGGs, EfficientNets, the CIFAR-10 and ImageNet benchmarks. BN keeps κ near 1, making every first-order attack a fair evaluator. The assumption that gradient-based attacks are sufficient has been invisible because benchmark architectures happened to satisfy it.
 
-The adversarial ML literature has been built almost entirely on CNN architectures that use Batch Normalization — ResNets, VGGs, EfficientNets, the CIFAR-10 and ImageNet benchmarks. BN normalizes gradient magnitudes layer-by-layer, implicitly keeping κ near 1 and making every first-order attack a fair evaluator. The assumption that gradient-based attacks are sufficient has been invisible for years because the benchmark architectures happened to satisfy it.
+Medical AI operates in a different regime. Graph Neural Networks for functional connectivity, Transformers for EHR sequences, RNNs for physiological time series, attention models for histopathology — none of these routinely use the aggressive normalization of image classifiers. For any of these architectures, a robustness certificate from AutoAttack may be systematically optimistic.
 
-Medical AI operates in a different regime. Graph Neural Networks for functional connectivity (like STAGIN), Transformers for EHR sequences, RNNs for physiological time series, attention models for histopathology — none of these routinely use the aggressive normalization patterns of image classifiers. For any of these architectures, a robustness certificate issued by AutoAttack may be systematically optimistic.
+The κ estimate — computed cheaply via a few Rayleigh quotient power iterations before running any attack — can serve as a practical diagnostic:
 
-The κ estimate — computed cheaply via a few Rayleigh quotient power iterations before running any attack — can serve as a practical diagnostic: **if κ ≫ 1, include KAPPA in your robustness evaluation. If κ ≈ 1, AutoAttack suffices.**
+> **If κ ≫ 1, include KAPPA in your robustness evaluation. If κ ≈ 1, AutoAttack suffices.**
 
 ---
 
 ## Code and Reproducibility
 
-KAPPA is implemented in `hessian.py` (precision-med repository), model-agnostic and requiring only a differentiable PyTorch `forward()`. The full evaluation pipeline — model checkpoints, configs, Nebius job scripts, and complete `attack_results.json` across all 5 epsilons — is open-source:
+KAPPA is implemented in `hessian.py`, model-agnostic and requiring only a differentiable PyTorch `forward()`. The full evaluation pipeline — model checkpoints, configs, Nebius job scripts, partial-save/resume logic, and `attack_results.json` — is open-source:
 
 **[github.com/diegom4riano/nebius-fmri-adversarial](https://github.com/diegom4riano/nebius-fmri-adversarial)**
 
-The entire experiment is reproducible with `make deploy-attack` from a Nebius account.
+Reproduce the full experiment: `make deploy-attack` from a Nebius account with the HCP data in S3.
 
 ---
 
