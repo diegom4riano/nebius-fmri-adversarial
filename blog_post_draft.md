@@ -44,7 +44,7 @@ To validate the κ hypothesis, I needed two architectures with meaningfully diff
 A 13-block dilated 1D CNN (Han et al. architecture) for 4-class rhythm classification. Every convolutional block is followed by Batch Normalization. BN normalizes gradient magnitudes layer-by-layer, keeping the loss surface well-conditioned. Estimated κ ≈ 1. Test accuracy: 87.5%.
 
 **fMRI Sex Classifier — STAGIN on HCP**
-A Spatio-Temporal Attention Graph Isomorphism Network (Kim & Ye) trained on 1,080 resting-state fMRI scans from the Human Connectome Project. The preprocessing pipeline: CIFTI files → 333 ROIs (Gordon atlas) → 50-TR sliding-window functional connectivity matrices (~50 windows per 1,200-TR acquisition). The model combines 4 GIN layers, multi-head self-attention, and a GRU over time — **no normalization layers anywhere**. Training used OneCycleLR scheduling, L2 regularization (λ=1e-5), and early stopping with patience=30. Estimated condition number: κ = **178,695**. Test BACC: 77.2%.
+A Spatio-Temporal Attention Graph Isomorphism Network (Kim & Ye) trained on 1,080 resting-state fMRI scans (756 training / 108 val / 216 test) from the Human Connectome Project. The preprocessing pipeline: CIFTI files → 333 ROIs (Gordon atlas) → 50-TR sliding-window functional connectivity matrices (51 windows per 1,200-TR acquisition). The model combines 4 GIN layers, single-head self-attention, and a GRU over time. GIN and SERO modules use BatchNorm1d; the Transformer uses LayerNorm — but the GRU temporal path is unnormalized, and the measured Hessian spectrum confirms a severely ill-conditioned landscape regardless. Training used OneCycleLR scheduling, orthogonality regularization (λ=1e-5), and early stopping with patience=30. Measured condition number: κ = **178,695**. Test BACC: 77.2%.
 
 > *Figure 1 — At ε=0.001, KAPPA achieves 60.7% ASR while AutoAttack (SOTA) achieves only 17.9% — a 3.4× gap. Bar widths include wall-clock time to show the efficiency advantage is not just accuracy.*
 
@@ -95,7 +95,7 @@ Computing Hessian-Vector Products requires retaining the full computational grap
 
 | Resource | Value |
 |---|---|
-| Input per subject | `[50 × 333 × 333]` adjacency + `[1200 × 333]` timeseries |
+| Input per subject | `[51 × 333 × 333]` adjacency + `[1200 × 333]` timeseries |
 | Peak VRAM (KAPPA backward) | **86,876 MB** |
 | A100 SXM capacity | 80,000 MB |
 | H200 SXM capacity | 141,000 MB |
@@ -107,20 +107,19 @@ Deployment was a single CLI call:
 
 ```bash
 nebius ai job create \
+  --parent-id $PARENT_ID \
+  --name kappa-fmri-attack \
+  --image pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime \
   --platform gpu-h200-sxm \
   --preset 1gpu-16vcpu-200gb \
-  --volume storagebucket-e005764888512084834516:/workspace/data \
-  --container-image pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime \
+  --disk-size 200Gi \
+  --shm-size 32Gi \
+  --volume $BUCKET_ID:/workspace/data \
   --container-command bash \
-  --args '-c "pip install -r requirements.txt && \
-              python test_fmri_model.py \
-              --config configs/config.yaml \
-              --output-dir /workspace/data/output \
-              --run-id 20260628_035830"' \
-  --timeout 86400
+  --args '-c "cd /workspace/data && pip install -r requirements.txt && python test_fmri_model.py --config configs/config.yaml --output-dir /workspace/data/output"'
 ```
 
-No cluster setup, no persistent VM billing, no storage provisioning beyond the S3 bucket. Total job runtime: ~12 hours. Total cost: $60.
+No cluster setup, no persistent VM billing, no storage provisioning beyond the S3 bucket. Total job runtime: ~10 hours. Total cost: $60.
 
 ---
 
@@ -140,9 +139,11 @@ class ForwardWrapper(torch.nn.Module):
         n, B = v.shape[0], self._B
         if n < B:
             pad = torch.zeros((B - n,) + v.shape[1:], device=v.device, dtype=v.dtype)
-            v = torch.cat([v, pad], dim=0)
+            v_run = torch.cat([v, pad], dim=0)
+        else:
+            v_run = v
         self.model.train()
-        logits, _, _, _ = self.model(v, self._a, self._t, self.endpoints)
+        logits, _, _, _ = self.model(v_run, self._a, self._t, self.endpoints)
         return logits[:n]
 ```
 
@@ -167,7 +168,7 @@ After fixing all three, I added a partial save after each epsilon and a `RESUME_
 
 ## Results
 
-Six attacks evaluated: KAPPA, AutoAttack (APGD-CE + Square — current state of the art), APGD-CE, PGD-40, PGD-500 (budget-matched to KAPPA), and C&W L2. Metric: **True ASR** — fraction of Male subjects (n=84) whose prediction flips to Female. This targeted metric avoids inflating rates with trivially adversarial examples.
+Six attacks evaluated: KAPPA, AutoAttack (APGD-CE + Square — current state of the art), APGD-CE, PGD-40, PGD-500 (budget-matched to KAPPA), and C&W L2. Metric: **True ASR** — fraction of Male subjects (n=82–84, varies by ε due to dropout active in train() mode) whose prediction flips to Female. This targeted metric avoids inflating rates with trivially adversarial examples.
 
 ### ECG CNN (κ ≈ 1) — Baseline Validation
 

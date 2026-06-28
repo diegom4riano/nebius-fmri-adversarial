@@ -22,7 +22,7 @@ The method will be described in full in an upcoming paper. The implementation in
 
 **Hypothesis:** KAPPA's advantage over first-order attacks is predicted by the Hessian condition number κ.
 - κ ≈ 1 (well-conditioned, e.g. BN-normalized CNNs): KAPPA ≈ PGD. No advantage.
-- κ ≫ 1 (ill-conditioned, e.g. GNNs without normalization): KAPPA >> all first-order attacks.
+- κ ≫ 1 (ill-conditioned, e.g. GNNs with incomplete normalization like STAGIN): KAPPA >> all first-order attacks.
 
 ---
 
@@ -39,7 +39,7 @@ The two models serve as a controlled experiment: same attack code, architectures
 
 ## Results
 
-### STAGIN — fMRI (κ = 178,695) · 84 Male test subjects
+### STAGIN — fMRI (κ = 178,695) · 82–84 Male test subjects (n varies by ε)
 
 ![Bar chart at eps 0.001](figures/bar_attack_eps001.png)
 
@@ -90,7 +90,7 @@ precision-med/                     Job: aijob-e00b1w63p1e576vgxc
 | Peak VRAM | 86,876 MB (exceeds A100 80 GB limit) |
 | Base image | `pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime` |
 | Job timeout | 86,400s (24h) |
-| Actual runtime | ~12h (6 attacks × 5 epsilons × 216 subjects) |
+| Actual runtime | ~10h (6 attacks × 5 epsilons × 216 subjects) |
 | Total cost | < $100 |
 
 **Why H200?** KAPPA requires double-backward HVPs through STAGIN's GRU. With batch=32, peak VRAM hits 86.9 GB — beyond an A100's 80 GB. The H200 (141 GB) is the minimum viable GPU for this experiment.
@@ -113,6 +113,21 @@ nebius auth login
 # endpoint_url = https://storage.eu-north1.nebius.cloud
 ```
 
+### Get HCP Data
+
+The `data/fmri/` directory and HCP atlas are excluded from git (large binary data). They are already preprocessed and uploaded to the Nebius S3 bucket used in this project. If you are reproducing the preprocessing from scratch:
+
+1. Register at [db.humanconnectome.org](https://db.humanconnectome.org) and accept the WU-Minn HCP Data Use Terms
+2. Go to **Amazon S3 Access → Get AWS Credentials** (temporary credentials, valid a few hours)
+3. Add an `[hcp]` profile to `~/.aws/credentials` with the key, secret, and session token
+4. Run the preprocessing script to stream CIFTI files from `s3://hcp-openaccess` and generate FC matrices:
+   ```bash
+   python precompute_fc.py  # CIFTI → 333 Gordon ROIs → 51-window sliding FC matrices
+   ```
+5. Upload to Nebius S3: `make upload-data`
+
+> HCP credentials expire after a few hours — if you see `AccessDenied`, regenerate at ConnectomeDB.
+
 ### Configure
 
 ```bash
@@ -132,7 +147,7 @@ Expected output: `smoke test PASSED — KAPPA and PGD ran without errors`
 ### Full run on Nebius H200
 
 ```bash
-make upload-data        # sync HCP FC matrices to S3 (~488 GB, run once)
+make upload-data        # sync preprocessed FC data, saved models, and HCP atlas to S3 (~488 GB, run once)
 make deploy-attack      # submit H200 job, writes results directly to S3
 make logs               # tail live job logs
 make download-results   # fetch output/attack_results.json when job completes
@@ -188,7 +203,8 @@ KAPPA method: *manuscript in preparation (ICLR submission)*
 STAGIN: Kim et al., [*Understanding Graph Isomorphism Network for rs-fMRI Functional Connectivity Analysis*](https://arxiv.org/abs/2111.01543), NeurIPS 2021  
 AutoAttack: Croce & Hein, [*Reliable evaluation of adversarial robustness with an ensemble of diverse parameter-free attacks*](https://arxiv.org/abs/2003.01690), ICML 2020  
 C&W: Carlini & Wagner, [*Towards Evaluating the Robustness of Neural Networks*](https://arxiv.org/abs/1608.04644), IEEE S&P 2017  
-HCP dataset: Van Essen et al., [*The WU-Minn Human Connectome Project*](https://doi.org/10.1016/j.neuroimage.2013.05.041), NeuroImage 2013
+HCP dataset: Van Essen et al., [*The WU-Minn Human Connectome Project*](https://doi.org/10.1016/j.neuroimage.2013.05.041), NeuroImage 2013  
+ECG CNN: Han et al., [*Deep learning models for electrocardiograms are susceptible to adversarial attack*](https://doi.org/10.1038/s41591-020-0791-x), Nature Medicine 26(3):360–363, 2020
 
 ---
 
