@@ -70,16 +70,26 @@ On the BN-normalized ECG model, PGD outperforms KAPPA — as predicted by κ ≈
 ## Infrastructure
 
 ```
-Local Machine                      Nebius Cloud (H200 SXM · 141 GB HBM3e)
-─────────────────                  ─────────────────────────────────────
-precision-med/                     Job: aijob-e00b1w63p1e576vgxc
-  hessian.py    ──┐                ┌── test_fmri_model.py
-  STAGIN.py     ──┤ Nebius AI Job  │     6 attacks × 5 epsilons
-  configs/      ──┴───── deploy ──►│     partial save after each ε
-                                   └──── results → S3
-                         S3 (Nebius Object Storage)
-                ├──── upload-data ──► precision-med-hcp/  (~488 GB HCP)
-                └──── download   ◄── output/attack_results.json
+  AWS S3 (hcp-openaccess)
+        │ stream 438 MB/subject (×1,080)
+        ▼
+  Nebius VM (H200, setup once)
+    scripts/extract_roi_timeseries.py  ← CIFTI → 333 Gordon ROIs
+    scripts/precompute_fc.py           ← ROI → FC matrices (51×333×333)
+        │ sync ~24 GB
+        ▼
+  Nebius S3 (precision-med-hcp/)
+    data/fmri/hcp/roi/fc/       ← 1,080 FC matrix files
+    saved_model/                ← STAGIN checkpoint (BACC=77.2%)
+        │ mount at /workspace/data
+        ▼
+  Nebius AI Job (H200 SXM · 141 GB HBM3e)
+    test_fmri_model.py          ← 6 attacks × 5 ε × 216 subjects
+    partial save after each ε   ← resume-safe
+        │ results → S3
+        ▼
+  Local machine
+    make download-results       ← output/attack_results.json
 ```
 
 | Resource | Value |
@@ -89,7 +99,6 @@ precision-med/                     Job: aijob-e00b1w63p1e576vgxc
 | Preset | `1gpu-16vcpu-200gb` |
 | Peak VRAM | 86,876 MB (exceeds A100 80 GB limit) |
 | Base image | `pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime` |
-| Job timeout | 86,400s (24h) |
 | Actual runtime | ~10h (6 attacks × 5 epsilons × 216 subjects) |
 | Total cost | < $100 |
 
@@ -97,9 +106,13 @@ precision-med/                     Job: aijob-e00b1w63p1e576vgxc
 
 ---
 
-## Quick Start
+## Reproduce
 
-### Prerequisites
+### Path A — Re-run the attack only (~10 min setup)
+
+The model checkpoint and preprocessed FC matrices are already in Nebius S3. This path re-runs the full H200 attack sweep against the same data.
+
+**Prerequisites**
 
 ```bash
 # Nebius CLI
@@ -107,66 +120,140 @@ curl -sSL https://storage.eu-north1.nebius.cloud/cli/install.sh | bash
 exec -l $SHELL
 nebius auth login
 
-# AWS CLI for Nebius S3
-# Add to ~/.aws/config:
-# [profile nebius]
-# endpoint_url = https://storage.eu-north1.nebius.cloud
+# AWS CLI (for S3 sync)
+brew install awscli          # macOS; or: sudo apt install awscli
+
+# Configure Nebius S3 profile
+aws configure --profile nebius
+# AWS Access Key ID:     <Nebius SA static key>
+# AWS Secret Access Key: <Nebius SA secret>
+# Default region:        eu-north1
 ```
 
-### Get HCP Data
-
-The `data/fmri/` directory and HCP atlas are excluded from git (large binary data). They are already preprocessed and uploaded to the Nebius S3 bucket used in this project. If you are reproducing the preprocessing from scratch:
-
-1. Register at [db.humanconnectome.org](https://db.humanconnectome.org) and accept the WU-Minn HCP Data Use Terms
-2. Go to **Amazon S3 Access → Get AWS Credentials** (temporary credentials, valid a few hours)
-3. Add an `[hcp]` profile to `~/.aws/credentials` with the key, secret, and session token
-4. Run the preprocessing script to stream CIFTI files from `s3://hcp-openaccess` and generate FC matrices:
-   ```bash
-   python precompute_fc.py  # CIFTI → 333 Gordon ROIs → 51-window sliding FC matrices
-   ```
-5. Upload to Nebius S3: `make upload-data`
-
-> HCP credentials expire after a few hours — if you see `AccessDenied`, regenerate at ConnectomeDB.
-
-### Configure
+**Configure and deploy**
 
 ```bash
 cp .env.template .env
 # Fill in: PARENT_ID, BUCKET_ID, S3_BUCKET, S3_ENDPOINT
+# (Nebius console: Compute → project ID; Storage → bucket ID)
+
+make deploy-attack      # uploads code, submits H200 job
+make logs               # tail live output
+make download-results   # fetch output/attack_results.json when done
 ```
 
-### Smoke test (no HCP data needed)
+**Resume a failed job**
+
+```bash
+make deploy-attack RESUME_RUN_ID=<previous_run_id>
+# Reloads partial JSON from S3, skips completed epsilons
+```
+
+**Smoke test (no data or GPU needed)**
 
 ```bash
 pip install -r requirements.txt
 python test_fmri_model.py --smoke-test --smoke-samples 8 --smoke-epsilons 0.05
+# Expected: smoke test PASSED — KAPPA and PGD ran without errors
 ```
 
-Expected output: `smoke test PASSED — KAPPA and PGD ran without errors`
-
-### Full run on Nebius H200
+**Reproduce figures from existing results**
 
 ```bash
-make upload-data        # sync preprocessed FC data, saved models, and HCP atlas to S3 (~488 GB, run once)
-make deploy-attack      # submit H200 job, writes results directly to S3
-make logs               # tail live job logs
-make download-results   # fetch output/attack_results.json when job completes
-```
-
-### Resume a failed job
-
-```bash
-make deploy-attack RESUME_RUN_ID=<previous_run_id>
-# Loads partial results from S3, skips completed epsilons
-```
-
-### Reproduce figures
-
-```bash
+pip install matplotlib numpy
 python generate_figures.py
-# Outputs: figures/asr_vs_epsilon_kappa.png
-#          figures/bar_attack_eps001.png
-#          figures/kappa_vs_autoattack_gap.png
+# figures/asr_vs_epsilon_kappa.png
+# figures/bar_attack_eps001.png
+# figures/kappa_vs_autoattack_gap.png
+```
+
+---
+
+### Path B — Full reproduction from scratch (~2–3 days)
+
+This path reproduces everything: HCP preprocessing, STAGIN training, and the attack sweep. The FC matrices (~24 GB on disk) must be generated on a VM — a local laptop lacks both bandwidth and storage for the 438 MB/subject HCP downloads.
+
+#### 1. Get HCP data access
+
+1. Register at [db.humanconnectome.org](https://db.humanconnectome.org)
+2. Accept the **WU-Minn HCP Data Use Terms**
+3. Go to **Amazon S3 Access → Get AWS Credentials** (temporary, expire in a few hours)
+
+#### 2. Provision a Nebius VM for preprocessing
+
+Create a VM in the Nebius console (**Compute → Virtual Machines → Create**):
+
+| Setting | Value |
+|---|---|
+| GPU | NVIDIA H200 NVLink |
+| RAM | 196 GiB |
+| Disk | 500 GiB NVMe |
+| OS | Ubuntu 24.04 LTS (CUDA pre-installed) |
+| Estimated cost | ~$3.55/h |
+
+Also create a **Nebius S3 bucket** (Storage → Object Storage) and a **service account** with `storage.editor` role to generate static access keys.
+
+#### 3. Set up the VM
+
+```bash
+ssh <user>@<VM_IP>
+
+sudo apt-get update -qq
+sudo apt-get install -y python3-pip python3-venv awscli git
+
+git clone https://github.com/diegom4riano/nebius-fmri-adversarial /opt/kappa
+cd /opt/kappa
+pip install -r requirements.txt
+
+# Configure AWS profiles on the VM (credentials stay on VM only)
+aws configure --profile hcp       # HCP key + secret + region us-east-1
+aws configure set aws_session_token <TOKEN> --profile hcp
+
+aws configure --profile nebius    # Nebius SA key + secret + region eu-north1
+```
+
+> HCP credentials expire in a few hours — regenerate at ConnectomeDB if you see `AccessDenied`.
+
+#### 4. Preprocess HCP data (~6–8h)
+
+```bash
+cd /opt/kappa
+
+# 4a. Extract 333 Gordon ROI timeseries from CIFTI files
+#     Streams rfMRI_REST1_LR_hp2000_clean.dtseries.nii (~438 MB/subject) from HCP S3,
+#     extracts ROIs, z-scores, deletes the .nii to stay within disk budget.
+nohup python scripts/extract_roi_timeseries.py \
+  --subjects data/HCP_YA_subjects_2026_04_26_22_26_40.csv \
+  --out-dir data/fmri/hcp/roi \
+  > logs/extract.log 2>&1 &
+
+tail -f logs/extract.log   # monitor progress
+
+# 4b. Precompute sliding-window FC matrices (~2 min, 16 workers)
+#     Generates 1,080 × fc_{i:04d}.npy shape (51, 333, 333) — ~24 GB total
+python scripts/precompute_fc.py --workers 16
+
+# Verify
+python - <<'EOF'
+import numpy as np
+roi = np.load('data/fmri/hcp/roi/roi_timeseries.npy')
+fc  = np.load('data/fmri/hcp/roi/fc/fc_0000.npy')
+print(roi.shape, fc.shape)   # (1080, 333, 1200)   (51, 333, 333)
+EOF
+
+# 4c. Sync FC matrices to Nebius S3
+aws s3 sync data/fmri/hcp/roi/fc/ s3://<S3_BUCKET>/data/fmri/hcp/roi/fc/ \
+  --profile nebius --endpoint-url https://storage.eu-north1.nebius.cloud
+```
+
+#### 5. Upload and run the attack
+
+```bash
+# From local machine
+make upload-data        # sync saved_model/ and data CSV to Nebius S3
+make deploy-attack      # submit H200 job (code uploaded automatically)
+make logs
+make download-results
 ```
 
 ---
@@ -185,6 +272,10 @@ python generate_figures.py
 ├── utils/
 │   ├── fMRILoader.py       HCP fMRI loader (sliding-window FC matrices)
 │   └── DataLoader.py       ECG loader
+├── scripts/
+│   ├── extract_roi_timeseries.py   CIFTI → 333 Gordon ROIs (streams from HCP S3)
+│   ├── precompute_fc.py            ROI timeseries → sliding-window FC matrices
+│   └── plot_results.py             Additional result plots
 ├── configs/config.yaml     Attack + training hyperparameters
 ├── saved_model/            Pre-trained checkpoints (STAGIN BACC=77.2%)
 ├── output/
