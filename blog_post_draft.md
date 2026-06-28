@@ -1,4 +1,4 @@
-# Validating KAPPA: A Second-Order Adversarial Attack on Clinical AI at Scale
+# KAPPA: A Second-Order Adversarial Attack on Clinical AI at Scale
 
 *Nebius Serverless AI Builders Challenge — Healthcare & Life Sciences*
 
@@ -7,6 +7,18 @@
 A model that classifies brain activity with 77% balanced accuracy sounds reasonably robust. Run AutoAttack against it — the current gold standard for adversarial robustness evaluation (Croce & Hein, 2020) — and it reports 17.9% attack success. Run KAPPA, the second-order attack I developed, and the same model shows **60.7% vulnerability** with a perturbation smaller than the noise floor of the MRI acquisition.
 
 AutoAttack missed more than two-thirds of those cases. This is not a problem with the model. It is a structural limitation of every attack that relies solely on gradient direction — including the current state of the art.
+
+---
+
+## Why This Matters for Medical AI
+
+The adversarial ML literature has been built almost entirely on CNN architectures with Batch Normalization — ResNets, VGGs, EfficientNets, CIFAR-10 and ImageNet benchmarks. BN keeps the loss surface well-conditioned, making every first-order attack a fair evaluator. The assumption that gradient-based attacks are sufficient has been invisible for years because benchmark architectures happened to satisfy it.
+
+Medical AI operates in a different regime. Graph Neural Networks for functional connectivity, Transformers for EHR sequences, RNNs for physiological time series, attention models for histopathology — none of these routinely use the aggressive normalization of image classifiers. For any of these architectures, a robustness certificate from AutoAttack may be systematically optimistic.
+
+The rest of this post explains why — and demonstrates it empirically on two clinical models, running on a Nebius H200 GPU.
+
+> **If κ ≫ 1 (no batch normalization), include KAPPA in your robustness evaluation. If κ ≈ 1, AutoAttack suffices.**
 
 ---
 
@@ -49,7 +61,7 @@ The full pipeline runs across three components:
 ```
 Local Machine                      Nebius Cloud
 ─────────────────                  ──────────────────────────────────
-precision-med/                     H200 SXM (141 GB HBM3e)
+nebius-fmri-adversarial/           H200 SXM (141 GB HBM3e)
   hessian.py  ──┐                  ┌── test_fmri_model.py
   STAGIN.py   ──┤                  │     └─ KAPPA × 6 attacks × 5 ε
   configs/    ──┤                  │     └─ partial save after each ε
@@ -65,7 +77,7 @@ precision-med/                     H200 SXM (141 GB HBM3e)
 The entire workflow is three Makefile targets:
 
 ```makefile
-make upload-data       # sync preprocessed HCP FC matrices to S3 (~488 GB, once)
+make upload-data       # sync data/, saved_model/ and HCP atlas to S3 (run once)
 make deploy-attack     # launch H200 job, write results directly to S3
 make download-results  # pull attack_results.json when job completes
 
@@ -108,7 +120,7 @@ nebius ai job create \
   --timeout 86400
 ```
 
-No cluster setup, no persistent VM billing, no storage provisioning beyond the S3 bucket. Total job runtime: ~12 hours. Total cost: under $100.
+No cluster setup, no persistent VM billing, no storage provisioning beyond the S3 bucket. Total job runtime: ~12 hours. Total cost: $60.
 
 ---
 
@@ -155,7 +167,7 @@ After fixing all three, I added a partial save after each epsilon and a `RESUME_
 
 ## Results
 
-Six attacks evaluated: KAPPA (mine), AutoAttack (APGD-CE + Square — current state of the art), APGD-CE, PGD-40, PGD-500 (budget-matched to KAPPA), and C&W L2. Metric: **True ASR** — fraction of Male subjects (n=84) whose prediction flips to Female. This targeted metric avoids inflating rates with trivially adversarial examples.
+Six attacks evaluated: KAPPA, AutoAttack (APGD-CE + Square — current state of the art), APGD-CE, PGD-40, PGD-500 (budget-matched to KAPPA), and C&W L2. Metric: **True ASR** — fraction of Male subjects (n=84) whose prediction flips to Female. This targeted metric avoids inflating rates with trivially adversarial examples.
 
 ### ECG CNN (κ ≈ 1) — Baseline Validation
 
@@ -207,17 +219,11 @@ C&W L2 flatlines at ~18% across all epsilons — STAGIN's vulnerability is struc
 
 ---
 
-## What This Means for Medical AI Robustness
+## Conclusion
 
-AutoAttack was designed to be the hardest practical first-order benchmark. On STAGIN at ε=0.001, it reports 17.9%. KAPPA reports 60.7%. **A model evaluated as having moderate vulnerability under the current gold standard has 3.4× greater true vulnerability.**
+AutoAttack reports 17.9% ASR. KAPPA reports 60.7%. **A model that passes the current gold-standard robustness evaluation has 3.4× greater true vulnerability** — not because AutoAttack is flawed, but because the assumption it was built on (well-conditioned loss surfaces) does not hold for GNNs, RNNs, and un-normalized architectures common in medical AI.
 
-This is not a failure of AutoAttack. It is a consequence of architecture. The adversarial ML literature has been built almost entirely on CNN architectures with Batch Normalization — ResNets, VGGs, EfficientNets, the CIFAR-10 and ImageNet benchmarks. BN keeps κ near 1, making every first-order attack a fair evaluator. The assumption that gradient-based attacks are sufficient has been invisible because benchmark architectures happened to satisfy it.
-
-Medical AI operates in a different regime. Graph Neural Networks for functional connectivity, Transformers for EHR sequences, RNNs for physiological time series, attention models for histopathology — none of these routinely use the aggressive normalization of image classifiers. For any of these architectures, a robustness certificate from AutoAttack may be systematically optimistic.
-
-The κ estimate — computed cheaply via a few Rayleigh quotient power iterations before running any attack — can serve as a practical diagnostic:
-
-> **If κ ≫ 1, include KAPPA in your robustness evaluation. If κ ≈ 1, AutoAttack suffices.**
+The κ estimate — computed cheaply before running any attack — tells you which world you're in. If κ ≫ 1, PGD-family attacks are navigating with a broken compass.
 
 ---
 
