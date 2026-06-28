@@ -34,9 +34,9 @@ A 13-block dilated 1D CNN (Han et al. architecture) for 4-class rhythm classific
 **fMRI Sex Classifier — STAGIN on HCP**
 A Spatio-Temporal Attention Graph Isomorphism Network (Kim & Ye) trained on 1,080 resting-state fMRI scans from the Human Connectome Project. The preprocessing pipeline: CIFTI files → 333 ROIs (Gordon atlas) → 50-TR sliding-window functional connectivity matrices (~50 windows per 1,200-TR acquisition). The model combines 4 GIN layers, multi-head self-attention, and a GRU over time — **no normalization layers anywhere**. Training used OneCycleLR scheduling, L2 regularization (λ=1e-5), and early stopping with patience=30. Estimated condition number: κ = **178,695**. Test BACC: 77.2%.
 
-> *Figure 1 — Training curves for both models. The STAGIN loss shows the characteristic noisy convergence of un-normalized GNN+RNN architectures; the ECG CNN converges smoothly under BN.*
+> *Figure 1 — At ε=0.001, KAPPA achieves 60.7% ASR while AutoAttack (SOTA) achieves only 17.9% — a 3.4× gap. Bar widths include wall-clock time to show the efficiency advantage is not just accuracy.*
 
-![training_curve](figures/training_curve.png)
+![bar at eps 0.001](figures/bar_attack_eps001.png)
 
 The prediction is unambiguous: KAPPA should underperform first-order attacks on the ECG model (κ ≈ 1) and dramatically outperform them on STAGIN (κ ≫ 1).
 
@@ -168,9 +168,9 @@ Six attacks evaluated: KAPPA (mine), AutoAttack (APGD-CE + Square — current st
 
 On the BN-normalized ECG model, **PGD outperforms KAPPA**. At ε=2, both are equivalent; at ε=10, KAPPA is 13.6 pp worse. This is exactly what the κ ≈ 1 prediction requires: when the loss surface is well-conditioned, the Newton direction adds no information, and CG overhead makes KAPPA strictly less efficient. The baseline holds — KAPPA does not claim universal superiority.
 
-> *Figure 2 — Confusion matrices: clean model (left), after KAPPA attack (center), after PGD attack (right) on the fMRI test set at ε=0.001. KAPPA flips 51/84 Male subjects; PGD flips 11.*
+> *Figure 2 — KAPPA advantage over AutoAttack across all five epsilon values. The shaded area shows percentage points gained by using KAPPA. The gap is largest at tight budgets (ε=0.001–0.005), where imperceptible perturbations matter most clinically.*
 
-![confusion matrices](figures/confusion_matrix_clean.png)
+![kappa vs autoattack gap](figures/kappa_vs_autoattack_gap.png)
 
 ### STAGIN fMRI (κ = 178,695) — Main Result
 
@@ -183,9 +183,9 @@ On the BN-normalized ECG model, **PGD outperforms KAPPA**. At ε=2, both are equ
 | C&W L2 | 16.7% | 18.3% | 18.3% | 18.3% | 18.3% |
 | PGD-500 | 13.1% | 29.3% | 42.7% | 51.2% | 53.7% |
 
-> *Figure 3 — True ASR vs epsilon for all six attacks on STAGIN. KAPPA (solid line) consistently sits above the first-order family, with the gap most pronounced at tight epsilon budgets.*
+> *Figure 3 — True ASR vs epsilon for all six attacks on STAGIN. KAPPA (red solid) consistently leads the first-order family. Note that PGD-500 (yellow dotted) is worse than PGD-40 at ε=0.001 — a direct signature of gradient oscillation in an ill-conditioned landscape.*
 
-![asr_vs_epsilon](figures/asr_vs_epsilon.png)
+![asr_vs_epsilon_kappa](figures/asr_vs_epsilon_kappa.png)
 
 At ε=0.001 — a perturbation imperceptible to preprocessing pipelines:
 

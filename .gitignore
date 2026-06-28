@@ -23,6 +23,7 @@ logs/
 output/
 !output/attack_results.json
 figures/
+!figures/*.png
 *.log
 
 # OS
