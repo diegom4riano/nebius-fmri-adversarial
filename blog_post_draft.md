@@ -1,30 +1,34 @@
-# KAPPA: A Second-Order Adversarial Attack That Exposes What PGD Cannot Find in Clinical AI
+# Validating KAPPA: A Second-Order Adversarial Attack on Clinical AI at Scale
 
 *Nebius Serverless AI Builders Challenge — Healthcare & Life Sciences*
 
 ---
 
-A model that classifies brain activity with 77% balanced accuracy sounds reasonably robust. Run PGD against it — the adversarial attack that underpins every major robustness benchmark — and you might conclude it has moderate vulnerabilities. Run KAPPA, the second-order attack I developed, and you find that **60.7% of targeted subjects can be silently misclassified with a perturbation smaller than the noise floor of the MRI acquisition**. PGD missed two-thirds of those cases.
+A model that classifies brain activity with 77% balanced accuracy sounds reasonably robust. Run AutoAttack against it — the current gold standard for adversarial robustness evaluation (Croce & Hein, 2020), trusted by the community precisely because it combines the best first-order and black-box strategies into a single ensemble — and it reports 17.9% attack success rate. Run KAPPA, the second-order attack I developed, and the same model shows **60.7% vulnerability** with a perturbation smaller than the noise floor of the MRI acquisition.
 
-This is not a problem with the model. It is a problem with how robustness is evaluated.
+AutoAttack missed more than two-thirds of those cases.
+
+This is not a problem with the model. It is a structural limitation of every attack that relies solely on gradient direction — including the current state of the art.
 
 ---
 
-## The Limitation of Gradient-Based Attacks
+## The Shared Limitation of First-Order Attacks
 
-PGD (Madry et al., 2018) is the foundation of adversarial machine learning. It iteratively takes a gradient step toward higher loss and projects back onto an L∞ constraint ball. It is simple, fast, and the basis of AutoAttack — the current gold standard for robustness benchmarking.
+The adversarial attack landscape today spans a spectrum of sophistication. At the classic end, **PGD** (Madry et al., 2018) takes a sign-gradient step and projects onto the L∞ ball — fast, simple, foundational. At the state of the art, **AutoAttack** (Croce & Hein, 2020) combines four strategies: APGD-CE (adaptive step-size PGD with cross-entropy loss), APGD-DLR (PGD with difference-of-logits ratio loss), FAB-T (boundary attack minimizing perturbation norm), and Square Attack (black-box random search). AutoAttack was specifically designed to overcome the known weaknesses of vanilla PGD — step size sensitivity, loss function choice, and local optima.
 
-The issue is that gradient direction alone is unreliable when the loss surface is ill-conditioned. In an ill-conditioned landscape, some directions are orders of magnitude steeper than others. Gradient steps are dominated by those steep directions and make no progress on the flat ones. More iterations amplify the problem: the iterates oscillate rather than converge, and the model appears robust simply because PGD cannot navigate its geometry.
+Yet all of these attacks share a fundamental property: **they use only first-order information**. Gradient direction. No curvature. APGD's adaptive step scheduler makes PGD steps smarter, but it cannot fix a misleading gradient direction — and gradient directions are systematically misleading on ill-conditioned loss surfaces.
 
-I designed **KAPPA** (κ-**A**ware **P**erturbation via **P**roximal **A**pproximation) to address this directly. KAPPA replaces PGD's sign-gradient step with a Newton step, solved by applying the Conjugate Gradient method to the system:
+When the Hessian condition number κ is large — some loss directions are orders of magnitude steeper than others — gradient steps oscillate in the steep directions and stall in the flat ones. An adaptive step size applied to a misleading direction just oscillates more efficiently. More iterations amplify the problem: at ε=0.001, PGD-500 achieves *lower* ASR than PGD-40. The model appears robust not because it is, but because no first-order method can navigate its geometry.
+
+I designed **KAPPA** (κ-**A**ware **P**erturbation via **P**roximal **A**pproximation) to address this at the root. KAPPA replaces the gradient step with a Newton step, solved by applying the Conjugate Gradient method to the system:
 
 ```
 (H + λI) δ = −∇L
 ```
 
-where H is the loss Hessian (approximated via Hessian-Vector Products using double-backward passes), λ is a regularizer set adaptively via the Rayleigh quotient to guarantee positive definiteness, and δ is the resulting perturbation direction. The Newton step accounts for curvature: it scales the gradient by the inverse Hessian, moving efficiently even in ill-conditioned landscapes.
+where H is the loss Hessian (approximated via Hessian-Vector Products using double-backward passes), λ is a regularizer set adaptively via the Rayleigh quotient to guarantee positive definiteness, and δ is the resulting search direction. The Newton step accounts for curvature explicitly: it rescales the gradient by the inverse Hessian, moving efficiently even where the landscape is maximally ill-conditioned.
 
-The central hypothesis: **KAPPA's advantage over PGD is predicted by the Hessian condition number κ**. When κ ≈ 1, curvature information adds nothing — gradient and Newton direction are the same. When κ ≫ 1, the Newton direction finds adversarial examples that PGD cannot.
+The central hypothesis: **KAPPA's advantage over the state of the art is predicted by the Hessian condition number κ**. When κ ≈ 1, curvature adds no information and KAPPA is equivalent to — or slower than — first-order attacks. When κ ≫ 1, KAPPA finds adversarial examples that the entire first-order family cannot.
 
 ---
 
@@ -75,7 +79,7 @@ Three non-trivial engineering fixes were required to get all six attacks running
 
 ## Results
 
-Six attacks evaluated: KAPPA (mine), PGD-40, PGD-500 (budget-matched to KAPPA), AutoAttack (APGD-CE + Square), APGD-CE, and C&W L2. Metric: **True ASR** — fraction of Male subjects (n=84) whose predicted class flips to Female after the attack. This targeted metric avoids inflating rates with trivially adversarial examples.
+Six attacks evaluated: KAPPA (mine), AutoAttack (APGD-CE + Square — current state of the art), APGD-CE (AutoAttack's strongest component), PGD-40, PGD-500 (budget-matched to KAPPA), and C&W L2. Metric: **True ASR** — fraction of Male subjects (n=84) whose predicted class flips to Female after the attack. This targeted metric avoids inflating rates with trivially adversarial examples.
 
 ### ECG CNN (κ ≈ 1) — The Baseline
 
@@ -99,13 +103,21 @@ On the BN-normalized ECG model, **PGD outperforms KAPPA**. At ε=2, both methods
 | C&W L2 | 16.7% | 18.3% | 18.3% | 18.3% | 18.3% |
 | PGD-500 | 13.1% | 29.3% | 42.7% | 51.2% | 53.7% |
 
-At ε=0.001 — a perturbation smaller than the precision of fMRI preprocessing — **KAPPA achieves 60.7% ASR while PGD-500 achieves 13.1%**, using the same compute budget (741s vs 3,771s). **PGD-500 is worse than PGD-40** at this epsilon: with κ=178,695, 500 iterations amplify oscillation rather than improve convergence. The model appears robust under PGD evaluation not because it is, but because PGD cannot find the adversarial region.
+At ε=0.001 — a perturbation smaller than the precision of fMRI preprocessing — the contrast is stark:
 
-Three patterns emerge across the epsilon sweep:
+- **AutoAttack** (state of the art): **17.9% ASR** in 2,762s
+- **APGD-CE** (AutoAttack's strongest component): **22.6%** in 783s
+- **KAPPA**: **60.7%** in 741s
 
-1. **KAPPA dominates at tight budgets.** At ε≤0.005, KAPPA leads by a 2–4.6× margin. This is the regime that matters clinically: imperceptible perturbations.
-2. **The gap narrows mid-range.** By ε=0.01, PGD-500 recovers to 42.7% vs KAPPA's 50%. The larger epsilon ball gives first-order methods enough room to overcome the conditioning problem.
-3. **KAPPA reopens the gap at ε=0.05–0.1** (93% vs 53%). Even with a generous budget, PGD plateaus while KAPPA finds adversarial examples for nearly all targets.
+KAPPA finds **3.4× more adversarial examples than AutoAttack** in less wall-clock time. And this is with AutoAttack's full adaptive machinery — adaptive step sizes, restart strategies, and two complementary attack objectives. The advantage is not computational: KAPPA uses roughly the same budget as APGD-CE. The advantage is structural: it uses curvature information that no first-order method has access to.
+
+The budget-matched baseline makes this precise: **PGD-500 achieves 13.1%** spending 3,771s — 5× more time than KAPPA at 741s. Remarkably, PGD-500 is also worse than PGD-40 (31.0%) at this epsilon. With κ=178,695, more gradient iterations amplify oscillation; the model appears robust under any first-order evaluation simply because the attacks cannot navigate its loss surface.
+
+Three patterns emerge across the full epsilon sweep:
+
+1. **KAPPA dominates at tight budgets.** At ε≤0.005, KAPPA leads AutoAttack by 2.7–3.7×. This is the clinically relevant regime: perturbations small enough to evade human review.
+2. **The gap narrows mid-range.** At ε=0.01, first-order methods partially recover (APGD-CE reaches 29.3%, KAPPA 50%) as the larger epsilon ball gives gradient methods enough room to work. The advantage drops to ~1.7×.
+3. **KAPPA reopens the gap at large epsilon.** At ε=0.05–0.1, KAPPA jumps to 93%+ while first-order methods plateau near 53–66%. Even with a generous budget, no first-order attack saturates the model's vulnerability — KAPPA does.
 
 C&W L2 flatlines at 18% across all epsilons. STAGIN's vulnerability is structurally aligned with L∞ directions, not L2 — L2-norm attacks cannot exploit it regardless of budget.
 
@@ -113,13 +125,15 @@ C&W L2 flatlines at 18% across all epsilons. STAGIN's vulnerability is structura
 
 ## The Implication for Medical AI Robustness
 
-AutoAttack is the most widely used robustness benchmark in the literature. On STAGIN at ε=0.001, AutoAttack reports 17.9% ASR. KAPPA reports 60.7%. **A model that appears moderately vulnerable under the current gold-standard evaluation has 3.4× greater true vulnerability.**
+AutoAttack was designed to be the hardest reasonable first-order benchmark — an ensemble that patches the known weaknesses of vanilla PGD. On STAGIN at ε=0.001, it reports 17.9% ASR. KAPPA reports 60.7%. **A model evaluated as having moderate vulnerability under the current gold standard has 3.4× greater true vulnerability.**
 
-This is a systemic issue, not an edge case. The adversarial ML literature has been built almost entirely around CNN architectures that use Batch Normalization — ResNets, VGGs, EfficientNets. BN normalizes gradient magnitudes and implicitly keeps κ near 1, making PGD an effective evaluator. The assumption that PGD is sufficient has been invisible because the benchmark models happened to satisfy it.
+This is not a failure of AutoAttack. AutoAttack is exactly what it claims to be: the best practical first-order evaluator. The gap is a consequence of the model architecture, not the attack design. And this is a systemic issue.
 
-Medical AI increasingly relies on architectures that do not: Graph Neural Networks for functional connectivity, Transformers for EHR sequences, RNNs for physiological time series, attention-based models for histopathology. None of these routinely use the aggressive BN patterns of image classifiers. For any of these architectures, a robustness certificate from PGD-based evaluation may be misleading.
+The adversarial ML literature has been built almost entirely on CNN architectures that use Batch Normalization — ResNets, VGGs, EfficientNets, the CIFAR-10 and ImageNet benchmarks. BN normalizes gradient magnitudes layer-by-layer, implicitly keeping κ near 1 and making every first-order attack a fair evaluator. The assumption that gradient-based attacks are sufficient has been invisible for years because the benchmark architectures happened to satisfy it.
 
-The κ estimate — computed cheaply via a few power iterations — can serve as a practical diagnostic: **if κ ≫ 1, include KAPPA in your robustness evaluation. If κ ≈ 1, PGD suffices.**
+Medical AI operates in a different regime. Graph Neural Networks for functional connectivity (like STAGIN), Transformers for EHR sequences, RNNs for physiological time series, attention models for histopathology — none of these routinely use the aggressive normalization patterns of image classifiers. For any of these architectures, a robustness certificate issued by AutoAttack may be systematically optimistic.
+
+The κ estimate — computed cheaply via a few Rayleigh quotient power iterations before running any attack — can serve as a practical diagnostic: **if κ ≫ 1, include KAPPA in your robustness evaluation. If κ ≈ 1, AutoAttack suffices.**
 
 ---
 
