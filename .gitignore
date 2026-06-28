@@ -1,0 +1,32 @@
+# Environment — never commit credentials
+.env
+
+# Large data files — stored in S3
+data/raw_data.npy
+data/raw_labels.npy
+data/random_permutation.npy
+data/fmri/
+HCP_S1200_Atlas_Z4_pkXDZ/
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Logs and outputs
+logs/
+output/
+figures/
+*.log
+
+# OS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/

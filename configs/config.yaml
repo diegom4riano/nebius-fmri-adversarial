@@ -1,0 +1,19 @@
+model:
+  hidden_dim: 64
+  sparsity: 30
+
+training:
+  epochs: 200
+  batch_size: 4
+  lr: 5.0e-4
+  patience: 30
+
+attack:
+  batch_size: 32
+  epsilon_sweep: [0.001, 0.005, 0.01, 0.05, 0.1]
+  pgd_steps: 40
+  pgd_matched_budget_steps: 500
+  newton_cg_outer_steps: 5
+  newton_cg_cg_iters: 50
+  run_autoattack: true
+  run_cw: true
