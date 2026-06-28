@@ -38,27 +38,37 @@ EPSILON_SWEEP_DEFAULT = [0.001, 0.005, 0.01, 0.05, 0.1]
 
 
 class ForwardWrapper(torch.nn.Module):
-    """Wraps STAGIN so single-input attack libraries (AutoAttack, torchattacks) work.
+    """Wraps STAGIN for single-input attack libraries (AutoAttack, torchattacks).
 
-    AutoAttack may call forward() with a sub-batch of size n < original batch_size,
-    so we slice a and t accordingly.  cuDNN RNN backward requires train() mode, so
-    we toggle it here and restore eval() on exit.
+    These libraries call forward() with variable batch sizes n ≤ B.  We pad v to
+    the stored batch size B so a and t always match — slicing a/t is not used because
+    BatchNorm cross-contamination from sub-batches still causes shape divergences in
+    _collate_adjacency.  Model is kept in train() mode throughout so cuDNN RNN backward
+    works; eval() must NOT be restored inside forward because the backward pass runs
+    after forward() returns and also requires train() mode.
     """
     def __init__(self, model, a, t, endpoints):
         super().__init__()
         self.model = model
-        self.a = a
-        self.t = t
+        self._a = a          # [B, T_w, N, N]
+        self._t = t          # [T, B, N_rois]  seq-first
         self.endpoints = endpoints
+        self._B = a.shape[0]
 
     def forward(self, v):
         n = v.shape[0]
-        was_training = self.model.training
-        self.model.train()  # cuDNN RNN backward only works in train mode
-        logits, _, _, _ = self.model(v, self.a[:n], self.t[:, :n, :], self.endpoints)
-        if not was_training:
-            self.model.eval()
-        return logits
+        B = self._B
+        if n < B:
+            pad = torch.zeros((B - n,) + v.shape[1:], device=v.device, dtype=v.dtype)
+            v_run = torch.cat([v, pad], dim=0)
+        else:
+            v_run = v
+        # cuDNN RNN backward requires train() mode.  Do NOT restore eval after this
+        # call — the backward pass happens after forward() returns and also needs
+        # train() mode.
+        self.model.train()
+        logits, _, _, _ = self.model(v_run, self._a, self._t, self.endpoints)
+        return logits[:n]
 
 
 def _infer_input_dim(ckpt_path):
@@ -229,13 +239,15 @@ def _run_attacks_batch(forward_v, wrapper, v, labels, epsilon, cfg):
     fl, nt = _asr(v_adv)
     res["pgd_500"] = {"flipped": fl, "nontarget": nt, "time_s": time.time() - t0}
 
-    # AutoAttack
+    # AutoAttack  (binary: DLR and FAB-T don't work with 2 classes; use apgd-ce + square)
     if cfg.get("run_autoattack", True):
         try:
             from autoattack import AutoAttack
             t0 = time.time()
             adversary = AutoAttack(wrapper, norm="Linf", eps=epsilon,
-                                   version="standard", verbose=False)
+                                   version="custom",
+                                   attacks_to_run=["apgd-ce", "square"],
+                                   verbose=False)
             v_adv = adversary.run_standard_evaluation(v.clone(), labels.long(),
                                                        bs=v.shape[0])
             fl, nt = _asr(v_adv)
@@ -273,10 +285,26 @@ def _run_attacks_batch(forward_v, wrapper, v, labels, epsilon, cfg):
     return res
 
 
-def run_attack_sweep(loader, model, device, epsilons, cfg_attack):
-    epsilon_results = []
+def run_attack_sweep(loader, model, device, epsilons, cfg_attack, out_dir=None):
+    partial_path = os.path.join(out_dir, "attack_results_partial.json") if out_dir else None
+
+    # Resume: load previously completed epsilons so we skip them
+    completed = {}
+    if partial_path and os.path.exists(partial_path):
+        with open(partial_path) as f:
+            prev = json.load(f)
+        for entry in prev.get("epsilon_results", []):
+            completed[entry["epsilon"]] = entry
+        if completed:
+            print(f"  [RESUME] found {len(completed)} completed ε in {partial_path}", flush=True)
+
+    epsilon_results = list(completed.values())
 
     for epsilon in epsilons:
+        if epsilon in completed:
+            print(f"\n  ε = {epsilon:.4f}  [SKIP — already done]", flush=True)
+            continue
+
         print(f"\n  ε = {epsilon:.4f}", flush=True)
         if torch.cuda.is_available():
             torch.cuda.reset_peak_memory_stats()
@@ -284,6 +312,7 @@ def run_attack_sweep(loader, model, device, epsilons, cfg_attack):
         attack_keys = ["newton_cg", "pgd_40", "pgd_500", "autoattack", "apgd_ce", "cw_l2"]
         totals = {k: {"flipped": 0, "nontarget": 0, "time_s": 0.0} for k in attack_keys}
 
+        model.train()  # keep in train mode: cuDNN RNN backward requires it
         for v, a, t, endpoints, labels in loader:
             v, a, t  = v.to(device), a.to(device), t.to(device)
             labels   = labels.to(device)
@@ -293,7 +322,7 @@ def run_attack_sweep(loader, model, device, epsilons, cfg_attack):
                 return logits
 
             wrapper = ForwardWrapper(model, a, t, endpoints)
-            wrapper.eval()
+            # do NOT call wrapper.eval(): model must stay in train() for cuDNN RNN backward
 
             batch_res = _run_attacks_batch(forward_v, wrapper, v, labels, epsilon, cfg_attack)
 
@@ -317,6 +346,12 @@ def run_attack_sweep(loader, model, device, epsilons, cfg_attack):
 
         eps_entry["gpu_memory_mb_peak"] = get_gpu_memory_mb()
         epsilon_results.append(eps_entry)
+
+        # Save partial results after every epsilon so job failures don't lose prior work
+        if partial_path:
+            with open(partial_path, "w") as f:
+                json.dump({"epsilon_results": epsilon_results}, f, indent=2)
+            print(f"    [partial saved → {partial_path}]", flush=True)
 
     return epsilon_results
 
@@ -424,7 +459,8 @@ def main():
 
     # Adversarial sweep
     print(f"\nAdversarial sweep  ε={epsilon_sweep}")
-    atk_results = run_attack_sweep(test_loader, model, DEVICE, epsilon_sweep, cfg_attack)
+    atk_results = run_attack_sweep(test_loader, model, DEVICE, epsilon_sweep, cfg_attack,
+                                   out_dir=out_dir)
 
     # Save JSON
     output = {

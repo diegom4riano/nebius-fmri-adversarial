@@ -53,7 +53,15 @@ upload-data: configure-s3-transfer
 	  --endpoint-url $(S3_ENDPOINT)
 	@echo "Data upload complete."
 
+# RESUME_RUN_ID: set to a previous run-id to resume from its partial results
+# e.g.: make deploy-attack RESUME_RUN_ID=20260628_023716
+RESUME_RUN_ID ?=
+
+_RESUME_FLAG = $(if $(RESUME_RUN_ID),--run-id $(RESUME_RUN_ID),--run-id $(RUN_ID))
+
 # Main job: adversarial attack evaluation on H200
+# Output goes directly to /workspace/data/output (S3-mounted) so partial results
+# survive job failures — no cp needed at end.
 deploy-attack: check-env upload-job-files
 	$(NEBIUS) ai job create \
 	  --parent-id $(PARENT_ID) \
@@ -65,7 +73,7 @@ deploy-attack: check-env upload-job-files
 	  --shm-size 32Gi \
 	  --volume $(BUCKET_ID):/workspace/data \
 	  --container-command bash \
-	  --args '-c "apt-get update -qq && apt-get install -y git -q && cd /workspace/data && pip install --no-cache-dir -r requirements.txt && python test_fmri_model.py --config configs/config.yaml --output-dir /tmp/output --run-id $(RUN_ID) && cp -r /tmp/output /workspace/data/output/"'
+	  --args '-c "apt-get update -qq && apt-get install -y git -q && cd /workspace/data && pip install --no-cache-dir -r requirements.txt && python test_fmri_model.py --config configs/config.yaml --output-dir /workspace/data/output $(_RESUME_FLAG)"'
 	@echo "Job submitted. Monitor with: make logs"
 
 # Optional: re-training job
