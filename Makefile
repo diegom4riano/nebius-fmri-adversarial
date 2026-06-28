@@ -65,7 +65,7 @@ deploy-attack: check-env upload-job-files
 	  --shm-size 32Gi \
 	  --volume $(BUCKET_ID):/workspace/data \
 	  --container-command bash \
-	  --args '-c "cd /workspace/data && pip install --no-cache-dir -r requirements.txt && python test_fmri_model.py --config configs/config.yaml --output-dir /tmp/output --run-id $(RUN_ID) && cp -r /tmp/output /workspace/data/output/"'
+	  --args '-c "apt-get update -qq && apt-get install -y git -q && cd /workspace/data && pip install --no-cache-dir -r requirements.txt && python test_fmri_model.py --config configs/config.yaml --output-dir /tmp/output --run-id $(RUN_ID) && cp -r /tmp/output /workspace/data/output/"'
 	@echo "Job submitted. Monitor with: make logs"
 
 # Optional: re-training job
