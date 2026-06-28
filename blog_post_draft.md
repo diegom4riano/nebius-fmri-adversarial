@@ -1,57 +1,97 @@
-# When Gradient Descent Fails: Second-Order Adversarial Attacks on Brain Imaging Models
+# Can You Fool a Brain Scan Model? Building Adversarial Attacks on Clinical AI with Nebius H200
 
-*Submitted to the Nebius Serverless AI Builders Challenge — Healthcare & Life Sciences*
-
----
-
-## The Clinical Stakes
-
-Machine learning models are increasingly used in clinical neuroscience: predicting disease, staging conditions, and classifying brain states from fMRI. But how robust are they? An adversarial attacker — a clinician submitting slightly modified scans, or a model audit gone wrong — could flip a diagnosis with imperceptible perturbations.
-
-To find out, I ran six adversarial attacks against **STAGIN** (Spatio-Temporal Attention Graph Isomorphism Network), a state-of-the-art model for sex classification from resting-state fMRI, on **216 Human Connectome Project subjects**. The result was surprising: a second-order Newton-CG attack achieved **60.7% attack success rate at ε=0.001** — while PGD with five times the compute budget achieved only **13.1%**. The gap traces to a single number: the Hessian condition number κ = **178,695**.
+*Nebius Serverless AI Builders Challenge — Healthcare & Life Sciences*
 
 ---
 
-## The Model: STAGIN on HCP Data
+## The Starting Point: Two Clinical Models
 
-STAGIN processes dynamic functional connectivity: it slides a 50-TR window across the 1,200-TR resting-state fMRI recording, computes a 333×333 ROI correlation matrix per window (~50 windows), and feeds the resulting spatio-temporal graph through 4 Graph Isomorphism Network layers with self-attention readout and a Transformer over the time axis.
+The question I wanted to answer was simple: how vulnerable are medical AI models to small, targeted input perturbations? I had two models already trained from a previous research project:
 
-Trained on the HCP Young Adult dataset, the model reaches **BACC = 77.2%** on the test split (216 subjects: 117 Female, 99 Male). This matches published benchmarks. The model checkpoint is 1.5 MB — small enough to run repeatedly inside a GPU job.
+**Model 1 — ECG rhythm classifier (CNN)**
+A 13-block dilated 1D CNN following the Han et al. architecture, trained on the PhysioNet/CinC 2017 challenge dataset (4-class rhythm classification: Normal, AF, Other, Noisy). Training ran for 50 epochs with the standard Adam optimizer and a step LR scheduler, reaching **87.5% test accuracy**. The model uses Batch Normalization after every convolutional block.
 
----
+**Model 2 — fMRI sex classifier (STAGIN)**
+A Spatio-Temporal Attention Graph Isomorphism Network trained on 1,080 resting-state fMRI scans from the Human Connectome Project (HCP). The training pipeline was significantly more complex:
+- Raw CIFTI files were parcellated into 333 ROIs using the Gordon atlas
+- Sliding windows (50 TRs, stride 3) generate dynamic functional connectivity matrices (~50 windows per subject)
+- The model combines 4 GIN layers with multi-head self-attention and a GRU across time windows
+- Training used `OneCycleLR` scheduler, L2 regularization (λ=1e-5), and early stopping with patience=30
+- Final test split: 216 subjects, **BACC = 77.2%**
 
-## The Adversarial Setup
-
-The threat model is **L∞ perturbations on the FC matrix inputs** — perturbing correlation values in the sliding-window adjacency tensor. This is meaningful: an attacker with access to preprocessing could introduce subtle, bounded noise in the correlation estimation step.
-
-I define **True Attack Success Rate (True ASR)** as the fraction of Male subjects (class 1, the non-target class) whose prediction flips to Female (class 0) after the attack. This is a targeted, subject-level metric that avoids inflated rates from trivially easy examples.
-
-Six attacks ran across five epsilon values (0.001, 0.005, 0.01, 0.05, 0.1):
-
-| Attack | Type | Budget |
-|---|---|---|
-| **Newton-CG** | 2nd order (Hessian) | 5 outer × 50 CG iters = 250 HVPs |
-| **PGD-40** | 1st order | 40 gradient steps |
-| **PGD-500** | 1st order (matched) | 500 gradient steps ≈ same FLOPs as Newton-CG |
-| **AutoAttack** | Ensemble (APGD-CE + Square) | — |
-| **APGD-CE** | 1st order w/ step schedule | 100 steps |
-| **C&W L2** | 1st order, L2 norm | 50 steps |
+Both models were already checkpointed and ready. The new work was building the attack pipeline and running it at scale.
 
 ---
 
-## Why Condition Number Is the Hidden Variable
+## The Attack Pipeline
 
-Before running the attacks, I estimated the Hessian condition number κ via Rayleigh quotients on random directions: **κ = 178,695**. This means the loss surface has directions that are 178,000× steeper than others.
+I implemented six attacks, all targeting the same threat model: **L∞ perturbations** on the raw input, small enough to be imperceptible, large enough to flip the predicted class.
 
-For gradient descent (PGD), this is catastrophic. Each step moves freely in the flat directions and barely at all in the steep ones — or overshoots and oscillates. With ε=0.001 (a very small budget), the gradient iterates are trapped: PGD takes 500 steps and achieves 13% ASR.
+- **Newton-CG** — a second-order attack that solves `(H + λI)δ = −∇L` at each step using Conjugate Gradient, where H is approximated via Hessian-Vector Products (HVPs) computed with double-backward passes
+- **PGD-40** — classic Projected Gradient Descent, 40 steps
+- **PGD-500** — same as PGD-40 but with 5× more steps, budget-matched to Newton-CG
+- **AutoAttack** — ensemble of APGD-CE + Square attack (binary-safe configuration)
+- **APGD-CE** — Auto-PGD with adaptive step size from `torchattacks`
+- **C&W L2** — Carlini-Wagner L2 norm attack (50 steps)
 
-Newton-CG solves the system `H·d = -g` at each outer step, finding the Newton direction that accounts for curvature. Even with only 5 outer steps, it navigates the ill-conditioned landscape efficiently — reaching 60.7% ASR in less total wall-clock time than PGD-500.
+The metric is **True Attack Success Rate (True ASR)**: the fraction of subjects in the non-target class whose prediction flips after the attack. For the fMRI model, this is Male subjects (predicted class 1) whose prediction flips to Female (class 0).
 
 ---
 
-## Results Across the Epsilon Sweep
+## The Engineering Challenges
 
-The table below shows True ASR (% of Male subjects flipped to Female) for all attacks across five epsilon values:
+Getting six different attack libraries to agree on a single STAGIN forward pass turned out to be the hardest part.
+
+**The batch size problem.** AutoAttack internally splits batches into sub-batches and calls `forward(v_sub)` where `v_sub` has fewer samples than the original batch. STAGIN's GRU uses batch-first tensors for the adjacency matrix (`[B, T_w, N, N]`) but seq-first for the temporal input (`[T, B, N_rois]`). When `v_sub.shape[0] < B`, the `torch.cat([v, time_encoding], dim=3)` inside STAGIN throws a size mismatch. The fix: a `ForwardWrapper` that pads `v` with zeros back to the original batch size B, runs the full forward pass, and returns only `logits[:n]`.
+
+**The cuDNN RNN backward problem.** C&W L2 requires second-order differentiation through the GRU. PyTorch's cuDNN backend only supports RNN backward in training mode — calling `model.eval()` inside `forward()` (a common pattern for inference) breaks C&W's backward pass because `eval()` gets called after `forward()` returns but before backward runs. Fix: keep the model in `train()` mode throughout the entire attack sweep, never restore `eval()`.
+
+**The AutoAttack binary problem.** AutoAttack's standard version includes DLR loss and FAB-T, which require at least 3 classes. For a binary classifier, these are silently skipped or misconfigured. Fix: `version='custom', attacks_to_run=['apgd-ce', 'square']`.
+
+**Partial saves and resume.** The full sweep (6 attacks × 5 epsilons) takes ~12 hours on a single H200. Each epsilon is saved to S3 immediately after completion. If a job crashes at ε=0.05, the next job resumes from where it left off: `make deploy-attack RESUME_RUN_ID=<old_run_id>`.
+
+---
+
+## Why the H200 Was Not Optional
+
+The STAGIN forward pass is memory-intensive: batch=32, each sample is a `[T_w=50, N=333, N=333]` sparse adjacency + `[T=1200, N_rois=333]` timeseries. The peak VRAM during an attack (which requires storing intermediate activations for backward passes) hit **86,876 MB — 86.9 GB**.
+
+An A100 has 80 GB HBM2e. This experiment cannot run on an A100.
+
+The **Nebius H200 SXM** has 141 GB HBM3e. Setup was a single CLI command:
+
+```bash
+nebius ai job create \
+  --platform gpu-h200-sxm \
+  --preset 1gpu-16vcpu-200gb \
+  --volume storagebucket-...:/workspace/data \
+  --container-command bash \
+  --args '-c "pip install -r requirements.txt && python test_fmri_model.py \
+              --config configs/config.yaml \
+              --output-dir /workspace/data/output \
+              --run-id $(date +%Y%m%d_%H%M%S)"'
+```
+
+The S3 bucket mounts at `/workspace/data`, results write directly to S3, and the hardware is released as soon as the job finishes. No persistent VM billing, no cluster management. Total job runtime: **~12 hours**. The final `attack_results.json` (5.1 KB) is in the repository.
+
+---
+
+## Results: ECG vs fMRI
+
+Before running the fMRI sweep, I had ECG baseline results from the precision-med project. The comparison reveals something unexpected.
+
+### ECG CNN — PhysioNet/CinC 2017 (ε in ADC units)
+
+| Method | ε | Steps | True ASR |
+|---|---|---|---|
+| PGD | 10 | 40 | **86.5%** |
+| Newton-CG | 10 | 5 outer × 10 CG | 72.9% |
+| PGD | 2 | 40 | 24.0% |
+| Newton-CG | 2 | 5 outer × 50 CG | 21.9% |
+
+On the ECG model, **PGD outperforms Newton-CG**. More CG iterations don't help. Second-order information is useless here.
+
+### STAGIN — HCP fMRI (ε in correlation units, 84 Male test subjects)
 
 | Attack | ε=0.001 | ε=0.005 | ε=0.01 | ε=0.05 | ε=0.1 |
 |---|---|---|---|---|---|
@@ -62,51 +102,43 @@ The table below shows True ASR (% of Male subjects flipped to Female) for all at
 | C&W L2 | 16.7% | 18.3% | 18.3% | 18.3% | 18.3% |
 | PGD-500 | 13.1% | 29.3% | 42.7% | 51.2% | 53.7% |
 
-Full results: `output/attack_results.json` in the repository.
+On the fMRI model, the picture flips: **Newton-CG achieves 60.7% ASR at ε=0.001 while PGD-500 achieves only 13.1%** — using 5× more gradient steps and 5× more wall-clock time (741s vs 3,771s).
 
-Three patterns stand out:
+The gap closes as epsilon grows (at ε=0.01, PGD-500 catches up to 42.7% vs Newton-CG's 50%), but reopens at ε=0.05 where Newton-CG jumps to 93% while PGD plateaus at ~53%.
 
-**1. Newton-CG dominates at tight budgets.** At ε=0.001, Newton-CG achieves **60.7% ASR in 741s** while PGD-500 achieves only **13.1% in 3,771s** — a 4.6× gap. PGD-500 is even worse than PGD-40, a direct consequence of ill-conditioning: more steps with a tiny step size amplify oscillations rather than making progress.
+### What Explains the Difference?
 
-**2. The gap closes as epsilon grows — then reopens.** By ε=0.01, PGD-500 recovers to 42.7% and nearly matches Newton-CG (50%). But at ε=0.05–0.1, Newton-CG jumps to 93%+ while PGD plateaus around 53%. The large epsilon ball is not enough to save PGD when the Newton direction is available.
+The ECG CNN uses Batch Normalization after every layer, which normalizes gradient directions and makes the loss landscape well-conditioned. The estimated Hessian condition number for the ECG model is κ ≈ 1. PGD works perfectly.
 
-**3. C&W L2 is epsilon-agnostic.** C&W L2 stays at ~18% across all epsilon values. This is expected: C&W minimizes L2 perturbation, and its effective budget in L∞ coordinates doesn't grow in the same way. The model's vulnerability is aligned with L∞ directions, not L2.
+The STAGIN model has no batch normalization. The estimated condition number is κ = **178,695**. The loss landscape has directions 178,000× steeper than others. Gradient descent oscillates in these directions; Newton-CG solves for the correct step direction. This is why the same attack code produces completely different results on the two models.
 
-The **H200 peak VRAM was 86.9 GB** — exceeding the 80 GB A100 limit. The H200 SXM (141 GB HBM3e) was the minimum viable GPU for this experiment.
+C&W L2 is a special case: it stays at ~18% regardless of ε because it minimizes L2 perturbation, and the fMRI model's vulnerabilities are aligned with L∞ directions, not L2.
 
 ---
 
-## The Infrastructure: Nebius Serverless AI Jobs on H200
+## The Infrastructure in Practice
 
-Running six attacks with double-backward Hessian-vector products on 216 subjects requires serious GPU memory. The STAGIN forward pass with batch=32 peaks at **86.9 GB VRAM** — beyond what an A100 (80 GB) can fit. The **Nebius H200 SXM** (141 GB HBM3e) handled this comfortably.
-
-The entire compute infrastructure runs serverless via **Nebius AI Jobs**:
+The entire workflow lives in a single `Makefile`:
 
 ```bash
-nebius ai job create \
-  --platform gpu-h200-sxm \
-  --preset 1gpu-16vcpu-200gb \
-  --volume storagebucket-...:/workspace/data \
-  --container-command bash \
-  --args '-c "pip install -r requirements.txt && python test_fmri_model.py ..."'
+make upload-data     # sync HCP preprocessed FC matrices to S3
+make deploy-attack   # launch Nebius H200 job, write results to S3
+make download-results # pull attack_results.json from S3
 ```
 
-No persistent VM, no cluster management. The job provisions an H200 node, mounts the S3 bucket at `/workspace/data`, runs the attack script, writes results back to S3, and releases the hardware. Total cost: well within the $100 challenge budget.
+Total cost for the full 12-hour H200 job: well under the $100 Nebius Builder Challenge budget. The S3 storage for all 1,113 subjects' FC matrices (~488 GB) is separate and was pre-uploaded from an earlier experiment.
 
-Code, model checkpoint, and results are at: **[github.com/diegom4riano/nebius-fmri-adversarial](https://github.com/diegom4riano/nebius-fmri-adversarial)**
+The resume mechanism meant that when we needed to iterate on the attack code (fixing the ForwardWrapper and cuDNN bugs), we could redeploy and skip already-completed epsilons instead of restarting from scratch.
 
 ---
 
 ## Conclusion
 
-Second-order attacks exploit information that first-order methods ignore: the curvature of the loss landscape. For clinical neural networks operating on high-dimensional brain connectivity data, this matters — the Hessian can be extremely ill-conditioned (κ≈180k here), making gradient descent ineffective even with a generous compute budget.
+Two models, same attack code, completely different results — because architecture choices (Batch Normalization vs none) change the loss geometry in ways that flip which optimizer wins. PGD-based robustness evaluations that skip second-order methods may miss real vulnerabilities in models without normalization layers, which are common in graph neural networks and other non-standard architectures used in medical imaging.
 
-The practical implication: **robustness evaluations using only PGD may significantly underestimate a model's true vulnerability.** A Newton-CG attack with the same budget reveals weaknesses that PGD simply cannot find.
-
-All code, configs, and full results are open-source. The Nebius H200 serverless infrastructure made this experiment reproducible in a single `make deploy-attack` command — no cluster setup, no persistent billing.
+All code, configs, trained checkpoints, and the full results JSON are open-source:
+**[github.com/diegom4riano/nebius-fmri-adversarial](https://github.com/diegom4riano/nebius-fmri-adversarial)**
 
 ---
 
 *#NebiusServerlessChallenge — Healthcare & Life Sciences*
-
-*Repository: [github.com/diegom4riano/nebius-fmri-adversarial](https://github.com/diegom4riano/nebius-fmri-adversarial)*
