@@ -38,7 +38,12 @@ EPSILON_SWEEP_DEFAULT = [0.001, 0.005, 0.01, 0.05, 0.1]
 
 
 class ForwardWrapper(torch.nn.Module):
-    """Wraps STAGIN so single-input attack libraries (AutoAttack, torchattacks) work."""
+    """Wraps STAGIN so single-input attack libraries (AutoAttack, torchattacks) work.
+
+    AutoAttack may call forward() with a sub-batch of size n < original batch_size,
+    so we slice a and t accordingly.  cuDNN RNN backward requires train() mode, so
+    we toggle it here and restore eval() on exit.
+    """
     def __init__(self, model, a, t, endpoints):
         super().__init__()
         self.model = model
@@ -47,7 +52,12 @@ class ForwardWrapper(torch.nn.Module):
         self.endpoints = endpoints
 
     def forward(self, v):
-        logits, _, _, _ = self.model(v, self.a, self.t, self.endpoints)
+        n = v.shape[0]
+        was_training = self.model.training
+        self.model.train()  # cuDNN RNN backward only works in train mode
+        logits, _, _, _ = self.model(v, self.a[:n], self.t[:, :n, :], self.endpoints)
+        if not was_training:
+            self.model.eval()
         return logits
 
 
