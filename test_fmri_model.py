@@ -52,15 +52,15 @@ class ForwardWrapper(torch.nn.Module):
 
 
 def _infer_input_dim(ckpt_path):
-    """Read input_dim from checkpoint's first GIN MLP weight."""
+    """Read input_dim from checkpoint's GRU weight (shape [3*hidden, input_dim])."""
     try:
         sd = torch.load(ckpt_path, map_location="cpu")
         for k, v in sd.items():
-            if "gin" in k and "mlp.0.weight" in k:
-                return int(v.shape[1])
+            if "timestamp_encoder.rnn.weight_ih_l0" in k:
+                return int(v.shape[1])  # [3*hidden_dim, input_dim]
     except Exception:
         pass
-    return 360  # default: HCP Schaefer 360
+    return 333  # default: HCP atlas ROIs in this checkpoint
 
 
 class _SmokeDataset(torch.utils.data.Dataset):
@@ -118,6 +118,8 @@ def parse_args():
                    help="Use synthetic data for local testing (no HCP files required)")
     p.add_argument("--smoke-samples", type=int, default=8)
     p.add_argument("--smoke-epsilons", type=float, nargs="+", default=[0.05])
+    p.add_argument("--smoke-input-dim", type=int, default=16,
+                   help="Tiny input_dim for fast CPU smoke test (uses random weights)")
     for k, v in DEFAULTS.items():
         if k in ("output_dir", "run_id"):
             continue
@@ -331,6 +333,15 @@ def main():
 
     if args.smoke_test:
         epsilon_sweep = args.smoke_epsilons
+        # Override attack steps to minimum for fast CPU validation
+        cfg_attack = {
+            "newton_cg_outer_steps": 1,
+            "newton_cg_cg_iters": 3,
+            "pgd_steps": 3,
+            "pgd_matched_budget_steps": 3,
+            "run_autoattack": True,
+            "run_cw": True,
+        }
         print("SMOKE TEST MODE — synthetic data (no HCP files required)\n")
 
     run_id  = args.run_id or time.strftime("%Y%m%d_%H%M%S")
@@ -339,8 +350,9 @@ def main():
 
     # Build data loader
     if args.smoke_test:
-        input_dim = _infer_input_dim(args.ckpt)
-        print(f"Inferred input_dim={input_dim} from checkpoint")
+        # Use tiny input_dim for fast CPU testing — checkpoint not loaded
+        input_dim = args.smoke_input_dim
+        print(f"Smoke test input_dim={input_dim} (random weights, no checkpoint)")
         ds = _SmokeDataset(input_dim, n_samples=args.smoke_samples)
         test_loader = torch.utils.data.DataLoader(
             ds, batch_size=min(args.smoke_samples, 4),
@@ -365,10 +377,10 @@ def main():
         cls_token   = args.cls_token,
         readout     = args.readout,
     )
-    if os.path.exists(args.ckpt):
+    if not args.smoke_test and os.path.exists(args.ckpt):
         model.load_state_dict(torch.load(args.ckpt, map_location=DEVICE))
         print(f"Loaded checkpoint: {args.ckpt}")
-    else:
+    elif not args.smoke_test:
         print(f"WARNING: checkpoint not found at {args.ckpt} — using random weights")
     model = model.to(DEVICE)
 
