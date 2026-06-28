@@ -21,6 +21,7 @@ build/
 # Logs and outputs
 logs/
 output/
+!output/attack_results.json
 figures/
 *.log
 
