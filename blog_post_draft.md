@@ -1,4 +1,4 @@
-# KAPPA: A Second-Order Adversarial Attack on Clinical AI at Scale
+# KAPPA: A Second-Order Adversarial Attack for Clinical Neural Networks
 
 *Nebius Serverless AI Builders Challenge — Healthcare & Life Sciences*
 
@@ -18,7 +18,7 @@ Medical AI operates in a different regime. Graph Neural Networks for functional 
 
 The rest of this post explains why — and demonstrates it empirically on two clinical models, running on a Nebius H200 GPU.
 
-> **If κ ≫ 1 (no batch normalization), include KAPPA in your robustness evaluation. If κ ≈ 1, AutoAttack suffices.**
+> **If κ ≈ 180,000 (severely ill-conditioned), include KAPPA in your robustness evaluation. If κ ≈ 8,000 (BN-normalized), AutoAttack suffices.**
 
 ---
 
@@ -30,9 +30,9 @@ Yet all of these attacks share a fundamental property: **they use only first-ord
 
 When the Hessian condition number κ is large, some loss directions are orders of magnitude steeper than others. Gradient steps oscillate in the steep directions and stall in the flat ones. More iterations amplify the problem rather than fixing it.
 
-I designed **KAPPA** (κ-**A**ware **P**erturbation via **P**roximal **A**pproximation) to address this at the root. Instead of following the gradient, KAPPA computes the Newton direction at each outer iteration — a search direction that accounts for curvature rather than just slope. The Hessian is never explicitly materialized; it is approximated on-the-fly via Hessian-Vector Products computed through double-backward passes, making KAPPA tractable on large models. A proximal regularization term ensures numerical stability in ill-conditioned regions. The full method is described in an upcoming paper and is model-agnostic: it requires only a differentiable PyTorch `forward()`.
+I designed **KAPPA** (κ-**A**daptive **P**roximal **P**erturbation **A**ttack) to address this at the root. Instead of following the gradient, KAPPA computes the Newton direction at each outer iteration — a search direction that accounts for curvature rather than just slope. The Hessian is never explicitly materialized; it is approximated on-the-fly via Hessian-Vector Products computed through double-backward passes, making KAPPA tractable on large models. A proximal regularization term ensures numerical stability in ill-conditioned regions. The full method is described in an upcoming paper and is model-agnostic: it requires only a differentiable PyTorch `forward()`.
 
-The central hypothesis: **KAPPA's advantage over the state of the art is predicted by κ**. When κ ≈ 1, Newton and gradient directions coincide — KAPPA adds overhead without benefit. When κ ≫ 1, the Newton direction finds adversarial examples that no first-order method can reach.
+The central hypothesis: **KAPPA's advantage over the state of the art is predicted by κ**. When κ is low (≈ 8,000), Newton and gradient directions largely coincide — KAPPA adds overhead without proportional benefit. When κ is extreme (≈ 180,000), the Newton direction finds adversarial examples that no first-order method can reach.
 
 ---
 
@@ -41,7 +41,7 @@ The central hypothesis: **KAPPA's advantage over the state of the art is predict
 To validate the κ hypothesis, I needed two architectures with meaningfully different condition numbers. I trained both from scratch.
 
 **ECG Rhythm Classifier — PhysioNet/CinC 2017**
-A 13-block dilated 1D CNN (Han et al. architecture) for 4-class rhythm classification. Every convolutional block is followed by Batch Normalization. BN normalizes gradient magnitudes layer-by-layer, keeping the loss surface well-conditioned. Estimated κ ≈ 1. Test accuracy: 87.5%.
+A 13-block dilated 1D CNN (Han et al. architecture) for 4-class rhythm classification. Every convolutional block is followed by Batch Normalization. BN normalizes gradient magnitudes layer-by-layer, significantly reducing ill-conditioning. Measured κ ≈ 8,000. Test accuracy: 87.5%.
 
 **fMRI Sex Classifier — STAGIN on HCP**
 A Spatio-Temporal Attention Graph Isomorphism Network (Kim & Ye) trained on 1,080 resting-state fMRI scans (756 training / 108 val / 216 test) from the Human Connectome Project. The preprocessing pipeline: CIFTI files → 333 ROIs (Gordon atlas) → 50-TR sliding-window functional connectivity matrices (51 windows per 1,200-TR acquisition). The model combines 4 GIN layers, single-head self-attention, and a GRU over time. GIN and SERO modules use BatchNorm1d; the Transformer uses LayerNorm — but the GRU temporal path is unnormalized, and the measured Hessian spectrum confirms a severely ill-conditioned landscape regardless. Training used OneCycleLR scheduling, orthogonality regularization (λ=1e-5), and early stopping with patience=30. Measured condition number: κ = **178,695**. Test BACC: 77.2%.
@@ -50,7 +50,7 @@ A Spatio-Temporal Attention Graph Isomorphism Network (Kim & Ye) trained on 1,08
 
 ![bar at eps 0.001](figures/bar_attack_eps001.png)
 
-The prediction is unambiguous: KAPPA should underperform first-order attacks on the ECG model (κ ≈ 1) and dramatically outperform them on STAGIN (κ ≫ 1).
+The prediction is unambiguous: KAPPA should underperform first-order attacks on the ECG model (κ ≈ 8,000) and dramatically outperform them on STAGIN (κ ≈ 180,000).
 
 ---
 
@@ -69,15 +69,17 @@ nebius-fmri-adversarial/           H200 SXM (141 GB HBM3e)
                 ├─── deploy ──────►│
                 │                  └── results → S3
                 │
-                │   S3 (488 GB HCP data + results)
-                ├─── upload-data ──► precision-med-hcp/
+                │   S3 precision-med-hcp/ (~1.8 GB, shared read-only)
+                │     roi_timeseries.npy  ← 1,080 subjects pre-processed
+                │     best_model_fmri.pth ← STAGIN checkpoint
+                ├─── upload-data ──► your-bucket/
                 └─── download ◄──── output/attack_results.json
 ```
 
 The entire workflow is three Makefile targets:
 
 ```makefile
-make upload-data       # sync data/, saved_model/ and HCP atlas to S3 (run once)
+make upload-data       # sync roi_timeseries.npy + saved_model/ to your bucket (once)
 make deploy-attack     # launch H200 job, write results directly to S3
 make download-results  # pull attack_results.json when job completes
 
@@ -108,7 +110,7 @@ Deployment was a single CLI call:
 ```bash
 nebius ai job create \
   --parent-id $PARENT_ID \
-  --name kappa-fmri-attack \
+  --name fmri-adversarial-attack \
   --image pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime \
   --platform gpu-h200-sxm \
   --preset 1gpu-16vcpu-200gb \
@@ -116,10 +118,10 @@ nebius ai job create \
   --shm-size 32Gi \
   --volume $BUCKET_ID:/workspace/data \
   --container-command bash \
-  --args '-c "cd /workspace/data && pip install -r requirements.txt && python test_fmri_model.py --config configs/config.yaml --output-dir /workspace/data/output"'
+  --args '-c "apt-get update -qq && apt-get install -y git -q && cd /workspace/data && pip install --no-cache-dir -r requirements.txt && python test_fmri_model.py --config configs/config.yaml --output-dir /workspace/data/output"'
 ```
 
-No cluster setup, no persistent VM billing, no storage provisioning beyond the S3 bucket. Total job runtime: ~10 hours. Total cost: $60.
+No cluster setup, no persistent VM billing, no storage provisioning beyond the S3 bucket. Total job runtime: ~10 hours. Total cost: < $100.
 
 ---
 
@@ -170,7 +172,7 @@ After fixing all three, I added a partial save after each epsilon and a `RESUME_
 
 Six attacks evaluated: KAPPA, AutoAttack (APGD-CE + Square — current state of the art), APGD-CE, PGD-40, PGD-500 (budget-matched to KAPPA), and C&W L2. Metric: **True ASR** — fraction of Male subjects (n=82–84, varies by ε due to dropout active in train() mode) whose prediction flips to Female. This targeted metric avoids inflating rates with trivially adversarial examples.
 
-### ECG CNN (κ ≈ 1) — Baseline Validation
+### ECG CNN (κ ≈ 8,000) — Baseline Validation
 
 | Method | ε | True ASR |
 |---|---|---|
@@ -179,7 +181,7 @@ Six attacks evaluated: KAPPA, AutoAttack (APGD-CE + Square — current state of 
 | PGD | 2 | 24.0% |
 | **KAPPA** | 2 | 21.9% |
 
-On the BN-normalized ECG model, **PGD outperforms KAPPA**. At ε=2, both are equivalent; at ε=10, KAPPA is 13.6 pp worse. This is exactly what the κ ≈ 1 prediction requires: when the loss surface is well-conditioned, the Newton direction adds no information, and CG overhead makes KAPPA strictly less efficient. The baseline holds — KAPPA does not claim universal superiority.
+On the BN-normalized ECG model, **PGD outperforms KAPPA**. At ε=2, both are equivalent; at ε=10, KAPPA is 13.6 pp worse. This is exactly what the κ ≈ 8,000 prediction requires: BN reduces ill-conditioning significantly, the Newton direction adds little over gradient, and CG overhead makes KAPPA strictly less efficient. The baseline holds — KAPPA does not claim universal superiority.
 
 > *Figure 2 — KAPPA advantage over AutoAttack across all five epsilon values. The shaded area shows percentage points gained by using KAPPA. The gap is largest at tight budgets (ε=0.001–0.005), where imperceptible perturbations matter most clinically.*
 
@@ -234,7 +236,7 @@ KAPPA is implemented in `hessian.py`, model-agnostic and requiring only a differ
 
 **[github.com/diegom4riano/nebius-fmri-adversarial](https://github.com/diegom4riano/nebius-fmri-adversarial)**
 
-Reproduce the full experiment: `make deploy-attack` from a Nebius account with the HCP data in S3.
+The preprocessed ROI timeseries and model checkpoint are available in a shared read-only S3 bucket — no HCP registration required to reproduce the attack sweep. Full instructions in the README.
 
 ---
 

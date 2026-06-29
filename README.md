@@ -16,13 +16,13 @@
 
 ## What Is KAPPA?
 
-**KAPPA** (κ-**A**ware **P**erturbation via **P**roximal **A**pproximation) is a second-order adversarial attack that replaces gradient steps with Newton steps, computed using Conjugate Gradient on Hessian-Vector Products. Unlike PGD and its variants (APGD, AutoAttack), KAPPA uses curvature information and is therefore effective on ill-conditioned loss surfaces where gradient direction alone is misleading.
+**KAPPA** (κ-**A**daptive **P**roximal **P**erturbation **A**ttack) is a second-order adversarial attack that replaces gradient steps with Newton steps, computed using Conjugate Gradient on Hessian-Vector Products. Unlike PGD and its variants (APGD, AutoAttack), KAPPA uses curvature information and is therefore effective on ill-conditioned loss surfaces where gradient direction alone is misleading.
 
-The method will be described in full in an upcoming paper. The implementation in [`hessian.py`](hessian.py) is model-agnostic and requires only a differentiable PyTorch `forward()`.
+The implementation in [`hessian.py`](hessian.py) is model-agnostic and requires only a differentiable PyTorch `forward()`.
 
 **Hypothesis:** KAPPA's advantage over first-order attacks is predicted by the Hessian condition number κ.
-- κ ≈ 1 (well-conditioned, e.g. BN-normalized CNNs): KAPPA ≈ PGD. No advantage.
-- κ ≫ 1 (ill-conditioned, e.g. GNNs with incomplete normalization like STAGIN): KAPPA >> all first-order attacks.
+- κ ≈ 8,000 (moderately conditioned, e.g. BN-normalized CNNs): KAPPA ≈ PGD. Marginal advantage.
+- κ ≈ 180,000 (severely ill-conditioned, e.g. GNNs with incomplete normalization like STAGIN): KAPPA >> all first-order attacks.
 
 ---
 
@@ -31,7 +31,7 @@ The method will be described in full in an upcoming paper. The implementation in
 | Model | Task | Dataset | Architecture | Test BACC | κ |
 |---|---|---|---|---|---|
 | **STAGIN** | fMRI sex classification | HCP-Rest S1200, n=1,080 | GIN + Self-Attention + GRU | **77.2%** | **178,695** |
-| **ECG CNN** | Rhythm classification | PhysioNet/CinC 2017 | 13-block dilated 1D CNN + BN | 87.5% | ≈ 1 |
+| **ECG CNN** | Rhythm classification | PhysioNet/CinC 2017 | 13-block dilated 1D CNN + BN | 87.5% | ≈ 8,000 |
 
 The two models serve as a controlled experiment: same attack code, architectures that differ only in normalization, opposite results for KAPPA vs PGD.
 
@@ -54,7 +54,7 @@ The two models serve as a controlled experiment: same attack code, architectures
 
 Full results: [`output/attack_results.json`](output/attack_results.json) · Peak VRAM: 86.9 GB · Job: `aijob-e00b1w63p1e576vgxc`
 
-### ECG CNN — PhysioNet 2017 (κ ≈ 1) · Control experiment
+### ECG CNN — PhysioNet 2017 (κ ≈ 8,000) · Control experiment
 
 | Method | ε | True ASR |
 |---|---|---|
@@ -63,33 +63,26 @@ Full results: [`output/attack_results.json`](output/attack_results.json) · Peak
 | PGD-40 | 2 | 24.0% |
 | KAPPA | 2 | 21.9% |
 
-On the BN-normalized ECG model, PGD outperforms KAPPA — as predicted by κ ≈ 1. The baseline validates the hypothesis.
+On the BN-normalized ECG model, PGD outperforms KAPPA — as predicted by κ ≈ 8,000. The baseline validates the hypothesis.
 
 ---
 
 ## Infrastructure
 
 ```
-  AWS S3 (hcp-openaccess)
-        │ stream 438 MB/subject (×1,080)
-        ▼
-  Nebius VM (H200, setup once)
-    scripts/extract_roi_timeseries.py  ← CIFTI → 333 Gordon ROIs
-    scripts/precompute_fc.py           ← ROI → FC matrices (51×333×333)
-        │ sync ~24 GB
-        ▼
   Nebius S3 (precision-med-hcp/)
-    data/fmri/hcp/roi/fc/       ← 1,080 FC matrix files
-    saved_model/                ← STAGIN checkpoint (BACC=77.2%)
+    data/fmri/hcp/roi/roi_timeseries.npy  ← 1,080 subjects · 333 ROIs · 1,200 TRs
+    saved_model/best_model_fmri.pth       ← STAGIN checkpoint (BACC=77.2%)
         │ mount at /workspace/data
         ▼
   Nebius AI Job (H200 SXM · 141 GB HBM3e)
-    test_fmri_model.py          ← 6 attacks × 5 ε × 216 subjects
-    partial save after each ε   ← resume-safe
+    test_fmri_model.py   ← 6 attacks × 5 ε × 216 test subjects
+    FC windows computed on-the-fly per batch (no precompute needed)
+    partial save after each ε  ← resume-safe
         │ results → S3
         ▼
   Local machine
-    make download-results       ← output/attack_results.json
+    make download-results  ← output/attack_results.json
 ```
 
 | Resource | Value |
@@ -108,11 +101,27 @@ On the BN-normalized ECG model, PGD outperforms KAPPA — as predicted by κ ≈
 
 ## Reproduce
 
-### Path A — Re-run the attack only (~10 min setup)
+### Quick validation — smoke test (no GPU, no data, no accounts)
 
-The model checkpoint and preprocessed FC matrices are already in Nebius S3. This path re-runs the full H200 attack sweep against the same data.
+```bash
+pip install -r requirements.txt
+python test_fmri_model.py --smoke-test --smoke-samples 8 --smoke-epsilons 0.05
+# Expected: smoke test PASSED — KAPPA and PGD ran without errors
+```
 
-**Prerequisites**
+---
+
+### Full H200 attack sweep (~10h, ~$100)
+
+The model checkpoint and preprocessed ROI timeseries are already in a shared Nebius S3 bucket accessible with the read-only key below. You only need your own Nebius account to submit the job.
+
+#### Prerequisites
+
+- Nebius account with credits ([console.eu-north1.nebius.cloud](https://console.eu-north1.nebius.cloud) — free trial available)
+- nebius CLI and AWS CLI
+- ~$100 in Nebius credits for H200 runtime
+
+#### Step 1 — Install CLIs
 
 ```bash
 # Nebius CLI
@@ -120,41 +129,79 @@ curl -sSL https://storage.eu-north1.nebius.cloud/cli/install.sh | bash
 exec -l $SHELL
 nebius auth login
 
-# AWS CLI (for S3 sync)
-brew install awscli          # macOS; or: sudo apt install awscli
-
-# Configure Nebius S3 profile
-aws configure --profile nebius
-# AWS Access Key ID:     <Nebius SA static key>
-# AWS Secret Access Key: <Nebius SA secret>
-# Default region:        eu-north1
+# AWS CLI
+brew install awscli      # macOS
+# or: sudo apt install awscli
 ```
 
-**Configure and deploy**
+#### Step 2 — Configure read-only access to shared data (Access available only for a short period of time for the challenge)
+
+```bash
+aws configure --profile nebius-readonly
+# Access Key ID:     NAKI1GQ4OSO9U4Z1M465
+# Secret Access Key: bJEWna+EL5PIxfWMHzK+v/lZjuCTpuxgIa4Crxwh
+# Default region name:   eu-north1
+# Default output format: (leave blank)
+```
+
+#### Step 3 — Create your Nebius resources (one-time console setup)
+
+1. [console.eu-north1.nebius.cloud](https://console.eu-north1.nebius.cloud) → **Projects** → Create project → note your **Project ID**
+2. **Storage → Object Storage** → Create bucket → note your **bucket name**
+3. **IAM → Service Accounts** → Create SA with `storage.editor` role → **Static Keys** → note your **Key ID** and **Secret**
+
+#### Step 4 — Configure your Nebius credentials
+
+```bash
+aws configure --profile nebius
+# Access Key ID:     <your SA key ID>
+# Secret Access Key: <your SA secret>
+# Default region name:   eu-north1
+# Default output format: (leave blank)
+```
+
+#### Step 5 — Configure .env
 
 ```bash
 cp .env.template .env
-# Fill in: PARENT_ID, BUCKET_ID, S3_BUCKET, S3_ENDPOINT
-# (Nebius console: Compute → project ID; Storage → bucket ID)
+# Edit .env: fill in PARENT_ID, BUCKET_ID, S3_BUCKET
 
+# Get BUCKET_ID with:
+nebius storage bucket get-by-name \
+  --name <your-bucket-name> \
+  --parent-id <your-project-id> \
+  --format jsonpath='{.metadata.id}'
+```
+
+#### Step 6 — Sync shared data to your bucket (~1.8 GB)
+
+```bash
+mkdir -p data/fmri/hcp/roi saved_model
+
+aws s3 sync s3://precision-med-hcp/data/ data/ \
+  --profile nebius-readonly \
+  --endpoint-url https://storage.eu-north1.nebius.cloud
+
+aws s3 sync s3://precision-med-hcp/saved_model/ saved_model/ \
+  --profile nebius-readonly \
+  --endpoint-url https://storage.eu-north1.nebius.cloud
+
+make upload-data        # upload to your bucket (one-time, ~1.8 GB)
+```
+
+#### Step 7 — Deploy and monitor
+
+```bash
 make deploy-attack      # uploads code, submits H200 job
 make logs               # tail live output
-make download-results   # fetch output/attack_results.json when done
+make download-results   # fetch output/<run_id>/attack_results.json when done
 ```
 
 **Resume a failed job**
 
 ```bash
 make deploy-attack RESUME_RUN_ID=<previous_run_id>
-# Reloads partial JSON from S3, skips completed epsilons
-```
-
-**Smoke test (no data or GPU needed)**
-
-```bash
-pip install -r requirements.txt
-python test_fmri_model.py --smoke-test --smoke-samples 8 --smoke-epsilons 0.05
-# Expected: smoke test PASSED — KAPPA and PGD ran without errors
+# Reloads partial results from S3, skips completed epsilons
 ```
 
 **Reproduce figures from existing results**
@@ -165,95 +212,6 @@ python generate_figures.py
 # figures/asr_vs_epsilon_kappa.png
 # figures/bar_attack_eps001.png
 # figures/kappa_vs_autoattack_gap.png
-```
-
----
-
-### Path B — Full reproduction from scratch (~2–3 days)
-
-This path reproduces everything: HCP preprocessing, STAGIN training, and the attack sweep. The FC matrices (~24 GB on disk) must be generated on a VM — a local laptop lacks both bandwidth and storage for the 438 MB/subject HCP downloads.
-
-#### 1. Get HCP data access
-
-1. Register at [db.humanconnectome.org](https://db.humanconnectome.org)
-2. Accept the **WU-Minn HCP Data Use Terms**
-3. Go to **Amazon S3 Access → Get AWS Credentials** (temporary, expire in a few hours)
-
-#### 2. Provision a Nebius VM for preprocessing
-
-Create a VM in the Nebius console (**Compute → Virtual Machines → Create**):
-
-| Setting | Value |
-|---|---|
-| GPU | NVIDIA H200 NVLink |
-| RAM | 196 GiB |
-| Disk | 500 GiB NVMe |
-| OS | Ubuntu 24.04 LTS (CUDA pre-installed) |
-| Estimated cost | ~$3.55/h |
-
-Also create a **Nebius S3 bucket** (Storage → Object Storage) and a **service account** with `storage.editor` role to generate static access keys.
-
-#### 3. Set up the VM
-
-```bash
-ssh <user>@<VM_IP>
-
-sudo apt-get update -qq
-sudo apt-get install -y python3-pip python3-venv awscli git
-
-git clone https://github.com/diegom4riano/nebius-fmri-adversarial /opt/kappa
-cd /opt/kappa
-pip install -r requirements.txt
-
-# Configure AWS profiles on the VM (credentials stay on VM only)
-aws configure --profile hcp       # HCP key + secret + region us-east-1
-aws configure set aws_session_token <TOKEN> --profile hcp
-
-aws configure --profile nebius    # Nebius SA key + secret + region eu-north1
-```
-
-> HCP credentials expire in a few hours — regenerate at ConnectomeDB if you see `AccessDenied`.
-
-#### 4. Preprocess HCP data (~6–8h)
-
-```bash
-cd /opt/kappa
-
-# 4a. Extract 333 Gordon ROI timeseries from CIFTI files
-#     Streams rfMRI_REST1_LR_hp2000_clean.dtseries.nii (~438 MB/subject) from HCP S3,
-#     extracts ROIs, z-scores, deletes the .nii to stay within disk budget.
-nohup python scripts/extract_roi_timeseries.py \
-  --subjects data/HCP_YA_subjects_2026_04_26_22_26_40.csv \
-  --out-dir data/fmri/hcp/roi \
-  > logs/extract.log 2>&1 &
-
-tail -f logs/extract.log   # monitor progress
-
-# 4b. Precompute sliding-window FC matrices (~2 min, 16 workers)
-#     Generates 1,080 × fc_{i:04d}.npy shape (51, 333, 333) — ~24 GB total
-python scripts/precompute_fc.py --workers 16
-
-# Verify
-python - <<'EOF'
-import numpy as np
-roi = np.load('data/fmri/hcp/roi/roi_timeseries.npy')
-fc  = np.load('data/fmri/hcp/roi/fc/fc_0000.npy')
-print(roi.shape, fc.shape)   # (1080, 333, 1200)   (51, 333, 333)
-EOF
-
-# 4c. Sync FC matrices to Nebius S3
-aws s3 sync data/fmri/hcp/roi/fc/ s3://<S3_BUCKET>/data/fmri/hcp/roi/fc/ \
-  --profile nebius --endpoint-url https://storage.eu-north1.nebius.cloud
-```
-
-#### 5. Upload and run the attack
-
-```bash
-# From local machine
-make upload-data        # sync saved_model/ and data CSV to Nebius S3
-make deploy-attack      # submit H200 job (code uploaded automatically)
-make logs
-make download-results
 ```
 
 ---
@@ -296,8 +254,6 @@ AutoAttack: Croce & Hein, [*Reliable evaluation of adversarial robustness with a
 C&W: Carlini & Wagner, [*Towards Evaluating the Robustness of Neural Networks*](https://arxiv.org/abs/1608.04644), IEEE S&P 2017  
 HCP dataset: Van Essen et al., [*The WU-Minn Human Connectome Project*](https://doi.org/10.1016/j.neuroimage.2013.05.041), NeuroImage 2013  
 ECG CNN: Han et al., [*Deep learning models for electrocardiograms are susceptible to adversarial attack*](https://doi.org/10.1038/s41591-020-0791-x), Nature Medicine 26(3):360–363, 2020
-
----
 
 ## License
 
