@@ -1,3 +1,0 @@
-# Short Summary — Nebius Serverless AI Builders Challenge
-
-Clinical AI models can pass all the standard robustness benchmarks and still be systematically exploitable – not because they are poorly trained, but because the evaluation tools were designed for a different kind of AI. This project empirically demonstrates the gap: on a brain fMRI classifier, the gold-standard robustness test reports 17.9% vulnerability. Here we develop our second-order attack KAPPA which achieves 60.7% on the same model. A certificate based on the wrong tool is no safety guarantee for systems informing diagnosis, triage or treatment decisions – it is a false one.

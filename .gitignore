@@ -32,6 +32,7 @@ figures/
 # Editor
 .vscode/
 .idea/
+.claude/
 
 # personal docs
 challenge-description.md
