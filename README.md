@@ -134,12 +134,18 @@ brew install awscli      # macOS
 # or: sudo apt install awscli
 ```
 
-#### Step 2 — Configure read-only access to shared data (Access available only for a short period of time for the challenge)
+#### Step 2 — Configure read-only access to shared data
+
+The preprocessed ROI timeseries and model checkpoint are available in a shared
+read-only S3 bucket — no HCP registration required. To request access credentials,
+contact **diegocampos.br@gmail.com** with subject `KAPPA S3 access`.
+
+Once you have the credentials:
 
 ```bash
 aws configure --profile nebius-readonly
-# Access Key ID:     NAKI1GQ4OSO9U4Z1M465
-# Secret Access Key: bJEWna+EL5PIxfWMHzK+v/lZjuCTpuxgIa4Crxwh
+# Access Key ID:     <provided on request>
+# Secret Access Key: <provided on request>
 # Default region name:   eu-north1
 # Default output format: (leave blank)
 ```
