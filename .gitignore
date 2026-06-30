@@ -1,5 +1,7 @@
 # Environment — never commit credentials
 .env
+.python-version
+.venv/
 
 # Large data files — stored in S3
 data/raw_data.npy

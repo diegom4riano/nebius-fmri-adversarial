@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 import sys
-import global_variables
+from utils import global_variables
 import torch.nn.functional as F
 device = global_variables.device
 

@@ -104,7 +104,12 @@ On the BN-normalized ECG model, PGD outperforms KAPPA — as predicted by κ ≈
 ### Quick validation — smoke test (no GPU, no data, no accounts)
 
 ```bash
+# Python 3.11 recommended (3.9+ required)
+pyenv local 3.11.9        # if using pyenv
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
+
 python test_fmri_model.py --smoke-test --smoke-samples 8 --smoke-epsilons 0.05
 # Expected: smoke test PASSED — KAPPA and PGD ran without errors
 ```
@@ -138,7 +143,7 @@ brew install awscli      # macOS
 
 The preprocessed ROI timeseries and model checkpoint are available in a shared
 read-only S3 bucket — no HCP registration required. To request access credentials,
-contact **diegocampos.br@gmail.com** with subject `KAPPA S3 access`.
+contact **diegocampos.br at gmail** with subject `KAPPA S3 access`.
 
 Once you have the credentials:
 
