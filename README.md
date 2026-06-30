@@ -247,7 +247,7 @@ python generate_figures.py
 
 ## Citation
 
-KAPPA method: *manuscript in preparation (ICLR submission)*
+KAPPA method: *manuscript in preparation*
 
 STAGIN: Kim et al., [*Understanding Graph Isomorphism Network for rs-fMRI Functional Connectivity Analysis*](https://arxiv.org/abs/2111.01543), NeurIPS 2021  
 AutoAttack: Croce & Hein, [*Reliable evaluation of adversarial robustness with an ensemble of diverse parameter-free attacks*](https://arxiv.org/abs/2003.01690), ICML 2020  
