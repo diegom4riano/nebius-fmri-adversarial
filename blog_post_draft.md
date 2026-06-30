@@ -1,10 +1,10 @@
-# KAPPA: A Second-Order Adversarial Attack for Clinical Neural Networks
+# Clinical AI Passes the Robustness Test. It Shouldn't Have.
 
 *Nebius Serverless AI Builders Challenge — Healthcare & Life Sciences*
 
 ---
 
-A model that classifies brain activity with 77% balanced accuracy sounds reasonably robust. Run AutoAttack against it — the current gold standard for adversarial robustness evaluation (Croce & Hein, 2020) — and it reports 17.9% attack success. Run KAPPA, the second-order attack I developed, and the same model shows **60.7% vulnerability** with a perturbation smaller than the noise floor of the MRI acquisition.
+Modern clinical AI models are routinely certified as adversarially robust before deployment — and those certificates carry real weight in procurement, regulation, and clinical trust. Run the gold-standard robustness test on a brain activity classifier and it reports 17.9% attack success — the model appears safe. Run KAPPA, the second-order attack developed in this project, and the same model shows **60.7% vulnerability** with a perturbation smaller than the noise floor of the MRI acquisition.
 
 AutoAttack missed more than two-thirds of those cases. This is not a problem with the model. It is a structural limitation of every attack that relies solely on gradient direction — including the current state of the art.
 
@@ -12,13 +12,13 @@ AutoAttack missed more than two-thirds of those cases. This is not a problem wit
 
 ## Why This Matters for Medical AI
 
-The adversarial ML literature has been built almost entirely on CNN architectures with Batch Normalization — ResNets, VGGs, EfficientNets, CIFAR-10 and ImageNet benchmarks. BN keeps the loss surface well-conditioned, making every first-order attack a fair evaluator. The assumption that gradient-based attacks are sufficient has been invisible for years because benchmark architectures happened to satisfy it.
+When a clinical AI model receives a robustness certificate, that certificate shapes real decisions — whether a hospital adopts the system, whether a regulator approves it, whether a clinician trusts its output. The assumption embedded in that certificate is that the tool used to test it was adequate.
 
-Medical AI operates in a different regime. Graph Neural Networks for functional connectivity, Transformers for EHR sequences, RNNs for physiological time series, attention models for histopathology — none of these routinely use the aggressive normalization of image classifiers. For any of these architectures, a robustness certificate from AutoAttack may be systematically optimistic.
+The tools used today were designed for a different kind of AI. The standard robustness benchmarks were built and validated on image classifiers — the kind used to recognize cats and cars. Clinical AI is built on fundamentally different architectures: graph networks that model brain connectivity, recurrent networks for cardiac signals, attention models for medical imaging. These architectures have a different geometry, and the standard tests were never designed for them.
 
-The rest of this post explains why — and demonstrates it empirically on two clinical models, running on a Nebius H200 GPU.
+This is not a theoretical concern. The gap is measurable, reproducible, and large enough to matter in practice.
 
-> **If κ ≈ 180,000 (severely ill-conditioned), include KAPPA in your robustness evaluation. If κ ≈ 8,000 (BN-normalized), AutoAttack suffices.**
+The rest of this post explains the geometry behind it — and demonstrates it empirically on two clinical models running on a Nebius H200 GPU.
 
 ---
 
@@ -224,9 +224,9 @@ C&W L2 flatlines at ~18% across all epsilons — STAGIN's vulnerability is struc
 
 ## Conclusion
 
-AutoAttack reports 17.9% ASR. KAPPA reports 60.7%. **A model that passes the current gold-standard robustness evaluation has 3.4× greater true vulnerability** — not because AutoAttack is flawed, but because the assumption it was built on (well-conditioned loss surfaces) does not hold for GNNs, RNNs, and un-normalized architectures common in medical AI.
+AutoAttack reports 17.9% ASR. KAPPA reports 60.7%. **A model that passes the current gold-standard robustness evaluation has 3.4× greater true vulnerability** — not because AutoAttack is flawed, but because the assumption it was built on (well-conditioned loss surfaces) does not hold for GNNs, RNNs, and un-normalized architectures common in medical AI. The κ estimate — computed cheaply before running any attack — tells you which evaluation regime you're in. If κ ≫ 1, PGD-family attacks are navigating with a broken compass.
 
-The κ estimate — computed cheaply before running any attack — tells you which world you're in. If κ ≫ 1, PGD-family attacks are navigating with a broken compass.
+The clinical implication is direct. A brain connectivity model, a physiological time series classifier, or an EHR prediction system can pass every standard robustness benchmark and still be systematically exploitable — not because the model is poorly trained, but because the evaluation method was never designed for its geometry. A certificate that says "this model is robust" may be answering the wrong question with the wrong tool. For systems that inform diagnosis, triage, or treatment decisions, that gap is not academic.
 
 ---
 

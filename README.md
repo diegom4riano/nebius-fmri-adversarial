@@ -2,9 +2,9 @@
 
 > **Nebius Serverless AI Builders Challenge — Healthcare & Life Sciences**
 
-📝 **Blog post:** [Read on Medium](#) — full problem / method / results write-up *(link after publish)*  
-🔎 **Proof of execution:** see [Results](#results) and [output/attack_results.json](output/attack_results.json) — real run on Nebius H200, job ID `aijob-e00b1w63p1e576vgxc`  
-🚀 **Reproduce:** `make deploy-attack` from a Nebius account with HCP data in S3
+**Blog post:** [Read on Medium](#) — full problem / method / results write-up *(link after publish)*  
+**Execution:** see [Results](#results) and [output/attack_results.json](output/attack_results.json) — real run on Nebius H200 
+**Reproduce:** `make deploy-attack` from a Nebius account with HCP data in S3
 
 ---
 

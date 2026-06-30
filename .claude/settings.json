@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(brew install *)",
+      "Bash(pandoc blog_post_draft.md -o blog_post_kappa.pdf --pdf-engine=xelatex -V geometry:margin=2.5cm -V fontsize=11pt -V mainfont=Georgia -V colorlinks=true -V linkcolor=blue --highlight-style=tango)",
+      "Bash(pandoc --list-output-formats)",
+      "Bash(python3 -c \"import weasyprint\")",
+      "Bash(pip3 show *)",
+      "Bash(pandoc blog_post_draft.md -o blog_post_kappa.pdf --pdf-engine=pdflatex -V geometry:margin=2.5cm -V fontsize=11pt -V colorlinks=true -V linkcolor=blue -V urlcolor=blue --highlight-style tango)",
+      "Bash(pandoc blog_post_draft.md -o blog_post_kappa.pdf --pdf-engine=pdflatex -V geometry:margin=2.5cm -V fontsize=11pt)",
+      "Bash(sudo port install texlive-latex-extra)",
+      "Read(//opt/local/share/texmf-texlive/tex/latex/**)",
+      "Read(//opt/local/**)",
+      "Bash(pip3 install *)",
+      "Bash(pandoc blog_post_draft.md -o blog_post_kappa.html --standalone --embed-resources --metadata title=\"KAPPA: A Second-Order Adversarial Attack for Clinical Neural Networks\")",
+      "Bash(python3 -c ' *)"
+    ]
+  }
+}
