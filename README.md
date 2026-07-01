@@ -1,14 +1,13 @@
-# KAPPA: Second-Order Adversarial Attacks on Clinical Neural Networks
+# KAPPA: Adversarial Attacks on Clinical Neural Networks
 
 > **Nebius Serverless AI Builders Challenge — Healthcare & Life Sciences**
 
-**Blog post:** [Read on Medium](#) — full problem / method / results write-up *(link after publish)*  
+**Blog post:** [Read on Medium](https://medium.com/@diegom4riano/clinical-ai-proves-its-robustness-it-shouldnt-have-e9b9a484561a) — full problem / method / results write-up *(link after publish)*  
 **Execution:** see [Results](#results) and [output/attack_results.json](output/attack_results.json) — real run on Nebius H200 
-**Reproduce:** `make deploy-attack` from a Nebius account with HCP data in S3
 
 ---
 
-**Central finding:** AutoAttack — the current gold standard for adversarial robustness evaluation — reports **17.9% attack success rate** on a clinical fMRI model. **KAPPA, the second-order attack developed in this project, reports 60.7%** — a 3.4× gap explained by the Hessian condition number κ = 178,695.
+**Central finding:** The current gold standard for adversarial robustness evaluation — reports **17.9% attack success rate** on a clinical fMRI model. **KAPPA, the second-order attack developed in this project, reports 60.7%** — a 3.4× gap.
 
 ![KAPPA vs all attacks across epsilon](figures/asr_vs_epsilon_kappa.png)
 
@@ -21,8 +20,8 @@
 The implementation in [`hessian.py`](hessian.py) is model-agnostic and requires only a differentiable PyTorch `forward()`.
 
 **Hypothesis:** KAPPA's advantage over first-order attacks is predicted by the Hessian condition number κ.
-- κ ≈ 8,000 (moderately conditioned, e.g. BN-normalized CNNs): KAPPA ≈ PGD. Marginal advantage.
-- κ ≈ 180,000 (severely ill-conditioned, e.g. GNNs with incomplete normalization like STAGIN): KAPPA >> all first-order attacks.
+- κ ≈ 0 (moderately conditioned, e.g. BN-normalized CNNs): KAPPA ≈ PGD. Marginal advantage.
+- κ >> 0 (severely ill-conditioned, e.g. GNNs with incomplete normalization like STAGIN): KAPPA >> all first-order attacks.
 
 ---
 
@@ -122,9 +121,8 @@ The model checkpoint and preprocessed ROI timeseries are already in a shared Neb
 
 #### Prerequisites
 
-- Nebius account with credits ([console.eu-north1.nebius.cloud](https://console.eu-north1.nebius.cloud) — free trial available)
+- Nebius account with credits ([console.eu-north1.nebius.cloud](https://console.eu-north1.nebius.cloud))
 - nebius CLI and AWS CLI
-- ~$100 in Nebius credits for H200 runtime
 
 #### Step 1 — Install CLIs
 
@@ -233,7 +231,6 @@ python generate_figures.py
 ├── hessian.py              KAPPA + PGD implementations (core, model-agnostic)
 ├── test_fmri_model.py      Full adversarial evaluation sweep (6 attacks × 5 ε)
 ├── train_fmri.py           STAGIN training (OneCycleLR, early stopping)
-├── train.py                ECG CNN training
 ├── generate_figures.py     Reproduce all result figures from attack_results.json
 ├── model/
 │   ├── STAGIN.py           Spatio-Temporal Attention GIN (Kim & Ye, NeurIPS 2021)
