@@ -5,11 +5,13 @@ export
 NEBIUS     := $(or $(shell which nebius 2>/dev/null), $(HOME)/.nebius/bin/nebius)
 RUN_ID     := $(shell date +%Y%m%d_%H%M%S)
 JOB_NAME   := fmri-adversarial-attack
+ECG_JOB_NAME := ecg-adversarial-attack
 TRAIN_NAME := fmri-train
 
-.PHONY: all upload-job-files configure-s3-transfer upload-data \
-        deploy-attack deploy-train logs logs-train \
-        download-results delete-earliest-run check-env
+.PHONY: all upload-job-files configure-s3-transfer upload-data upload-data-ecg \
+        deploy-attack deploy-attack-ecg deploy-train logs logs-ecg logs-train \
+        download-results delete-earliest-run check-env \
+        deploy-sweep deploy-sweep-dry deploy-kappa-validation status logs-job
 
 all: check-env upload-job-files deploy-attack
 
@@ -29,9 +31,16 @@ upload-job-files: configure-s3-transfer
 	  --endpoint-url $(S3_ENDPOINT) \
 	  --exclude ".git/*" \
 	  --exclude ".env" \
+	  --exclude ".venv/*" \
+	  --exclude "venv/*" \
+	  --exclude ".claude/*" \
+	  --exclude ".pytest_cache/*" \
+	  --exclude "*.egg-info/*" \
+	  --exclude ".DS_Store" \
 	  --exclude "output/*" \
 	  --exclude "logs/*" \
 	  --exclude "__pycache__/*" \
+	  --exclude "*/__pycache__/*" \
 	  --exclude "*.pyc" \
 	  --exclude "HCP_S1200_Atlas_Z4_pkXDZ/*" \
 	  --exclude "data/fmri/*" \
@@ -53,11 +62,22 @@ upload-data: configure-s3-transfer
 	  --endpoint-url $(S3_ENDPOINT)
 	@echo "Data upload complete."
 
+# Upload just the ECG .npy (raw_data/raw_labels/random_permutation) to the bucket's data/
+upload-data-ecg: configure-s3-transfer
+	aws s3 cp data/raw_data.npy          s3://$(S3_BUCKET)/data/ --endpoint-url $(S3_ENDPOINT)
+	aws s3 cp data/raw_labels.npy        s3://$(S3_BUCKET)/data/ --endpoint-url $(S3_ENDPOINT)
+	aws s3 cp data/random_permutation.npy s3://$(S3_BUCKET)/data/ --endpoint-url $(S3_ENDPOINT)
+	@echo "ECG data uploaded to s3://$(S3_BUCKET)/data/"
+
 # RESUME_RUN_ID: set to a previous run-id to resume from its partial results
 # e.g.: make deploy-attack RESUME_RUN_ID=20260628_023716
 RESUME_RUN_ID ?=
 
 _RESUME_FLAG = $(if $(RESUME_RUN_ID),--run-id $(RESUME_RUN_ID),--run-id $(RUN_ID))
+
+# Override to run a different config, e.g. the clamp ablation:
+#   make deploy-attack CONFIG=configs/config_ablation_noclamp.yaml
+CONFIG ?= configs/config.yaml
 
 # Main job: adversarial attack evaluation on H200
 # Output goes directly to /workspace/data/output (S3-mounted) so partial results
@@ -73,8 +93,23 @@ deploy-attack: check-env upload-job-files
 	  --shm-size 32Gi \
 	  --volume $(BUCKET_ID):/workspace/data \
 	  --container-command bash \
-	  --args '-c "apt-get update -qq && apt-get install -y git -q && cd /workspace/data && pip install --no-cache-dir -r requirements.txt && python test_fmri_model.py --config configs/config.yaml --output-dir /workspace/data/output $(_RESUME_FLAG)"'
-	@echo "Job submitted. Monitor with: make logs"
+	  --args '-c "apt-get update -qq && apt-get install -y git -q && cd /workspace/data && pip install --no-cache-dir -r requirements.txt && python test_fmri_model.py --config $(CONFIG) --output-dir /workspace/data/output $(_RESUME_FLAG)"'
+	@echo "Job submitted (config=$(CONFIG)). Monitor with: make logs"
+
+# ECG control experiment (low-κ). Untargeted robust-ASR; smaller/shorter than STAGIN.
+deploy-attack-ecg: check-env upload-job-files
+	$(NEBIUS) ai job create \
+	  --parent-id $(PARENT_ID) \
+	  --name $(ECG_JOB_NAME) \
+	  --image pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime \
+	  --platform gpu-h200-sxm \
+	  --preset 1gpu-16vcpu-200gb \
+	  --disk-size 200Gi \
+	  --shm-size 32Gi \
+	  --volume $(BUCKET_ID):/workspace/data \
+	  --container-command bash \
+	  --args '-c "apt-get update -qq && apt-get install -y git -q && cd /workspace/data && pip install --no-cache-dir -r requirements.txt && python test_pytorch_model.py --config configs/config_ecg.yaml --output-dir /workspace/data/output --data-dir data --ckpt saved_model/best_model.pth $(_RESUME_FLAG)"'
+	@echo "ECG job submitted. Monitor with: make logs-ecg"
 
 # Optional: re-training job
 deploy-train: check-env upload-job-files
@@ -96,6 +131,12 @@ logs:
 	echo "Job ID: $$JOB_ID"; \
 	$(NEBIUS) ai job logs $$JOB_ID --follow
 
+logs-ecg:
+	@JOB_ID=$$($(NEBIUS) ai job get-by-name --name $(ECG_JOB_NAME) \
+	  --parent-id $(PARENT_ID) --format jsonpath='{.metadata.id}'); \
+	echo "Job ID: $$JOB_ID"; \
+	$(NEBIUS) ai job logs $$JOB_ID --follow
+
 logs-train:
 	@JOB_ID=$$($(NEBIUS) ai job get-by-name --name $(TRAIN_NAME) \
 	  --parent-id $(PARENT_ID) --format jsonpath='{.metadata.id}'); \
@@ -106,6 +147,41 @@ download-results:
 	aws s3 sync s3://$(S3_BUCKET)/output/ ./output/ \
 	  --endpoint-url $(S3_ENDPOINT)
 	@echo "Results in ./output/"
+
+# Fase 3/5: fan-out do barrido de damping (1 job por (λ,ε), nomes únicos). Ver scripts/deploy_sweep.sh.
+# Prévia sem submeter nada:  make deploy-sweep-dry
+deploy-sweep: check-env
+	bash scripts/deploy_sweep.sh
+
+deploy-sweep-dry:
+	DRY_RUN=1 bash scripts/deploy_sweep.sh
+
+# Fase 1: job de validação de κ (HVP autodiff×FD, κ multi-input, PD-check).
+deploy-kappa-validation: check-env upload-job-files
+	$(NEBIUS) ai job create \
+	  --parent-id $(PARENT_ID) --name kappa-validation \
+	  --image pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime \
+	  --platform gpu-h200-sxm --preset 1gpu-16vcpu-200gb \
+	  --disk-size 200Gi --shm-size 32Gi \
+	  --volume $(BUCKET_ID):/workspace/data \
+	  --container-command bash \
+	  --args '-c "apt-get update -qq && apt-get install -y git -q && cd /workspace/data && pip install --no-cache-dir -r requirements.txt && python scripts/hvp_validation.py --config configs/config.yaml --n-inputs $(KAPPA_N_INPUTS)"'
+	@echo "κ-validation job submitted. Monitor with: make logs-job JOB=kappa-validation"
+KAPPA_N_INPUTS ?= 8
+
+# Estado de toda a frota (jobs deste parent), com o estado de cada um.
+status:
+	@$(NEBIUS) ai job list --parent-id $(PARENT_ID) \
+	  --format '(table .metadata.name .status.state .metadata.id)' 2>/dev/null \
+	  || $(NEBIUS) ai job list --parent-id $(PARENT_ID)
+
+# Logs de um job por nome:  make logs-job JOB=kappa-l0.15-e0.001
+logs-job:
+	@test -n "$(JOB)" || (echo "ERROR: passe JOB=<nome> (veja 'make status')" && exit 1)
+	@JOB_ID=$$($(NEBIUS) ai job get-by-name --name $(JOB) \
+	  --parent-id $(PARENT_ID) --format jsonpath='{.metadata.id}'); \
+	echo "Job ID: $$JOB_ID"; \
+	$(NEBIUS) ai job logs $$JOB_ID --follow
 
 # Remove the oldest run directory from S3
 delete-earliest-run:

@@ -24,8 +24,11 @@ build/
 logs/
 output/
 !output/attack_results.json
-figures/
+figures/*
 !figures/*.png
+figures/asr_vs_epsilon_kappa.png
+figures/bar_attack_eps001.png
+figures/kappa_vs_autoattack_gap.png
 *.log
 
 # OS
@@ -36,9 +39,36 @@ figures/
 .idea/
 .claude/
 
-# personal docs
-challenge-description.md
-linkedin_post.md
-short_summary.md
-s3_readonly_access.md
-blog_post_draft.md
+# ============================================================
+# Public repo: commit ONLY the code + configs needed to run the
+# pipeline. Ignore these source/doc extensions by default, then
+# whitelist (with !) the specific files that must be committed.
+# (Note: .gitignore does not untrack already-committed files —
+#  use `git rm --cached <file>` for those.)
+# ============================================================
+*.py
+*.yaml
+*.yml
+*.tex
+*.md
+*.txt
+
+# --- Pipeline code (Python) ---
+!hessian.py
+!test_fmri_model.py
+!test_pytorch_model.py
+!train_fmri.py
+!generate_figures.py
+!model/*.py
+!utils/*.py
+!scripts/*.py
+!tests/*.py
+
+# --- Configs needed to run the pipeline ---
+!configs/config.yaml
+!configs/config_ecg.yaml
+!configs/config_damping_sweep.yaml
+
+# --- Docs / dependencies to commit ---
+!README.md
+!requirements.txt

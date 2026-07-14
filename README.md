@@ -1,68 +1,144 @@
-# KAPPA: Adversarial Attacks on Clinical Neural Networks
+# Geometry-Aware Robustness Testing for Clinical AI
 
 > **Nebius Serverless AI Builders Challenge — Healthcare & Life Sciences**
 
-**Blog post:** [Read on Medium](https://medium.com/@diegom4riano/clinical-ai-proves-its-robustness-it-shouldnt-have-e9b9a484561a) — full problem / method / results write-up *(link after publish)*  
-**Execution:** see [Results](#results) and [output/attack_results.json](output/attack_results.json) — real run on Nebius H200 
+**Blog post:** [Can Clinical AI Prove Its Robustness?](https://medium.com/@diegom4riano/clinical-ai-proves-its-robustness-it-shouldnt-have-e9b9a484561a)
 
 ---
 
-**Central finding:** The current gold standard for adversarial robustness evaluation — reports **17.9% attack success rate** on a clinical fMRI model. **KAPPA, the second-order attack developed in this project, reports 60.7%** — a 3.4× gap.
+Robustness certificates back real clinical decisions — procurement, regulatory clearance, clinical trust. The implicit promise is that the tool used to test the model was adequate *for that model*. That promise is shakier than it looks for medical AI: standard robustness toolkits were built and tuned on image classifiers, while clinical AI uses fundamentally different architectures — graph networks for brain connectivity, recurrent networks for physiological time series — with different input constraints and different failure modes. A test designed for vision can silently mis-measure a clinical model in either direction: **false confidence** (a vulnerable model gets a clean bill of health) or a **false alarm** (a safe model looks catastrophically vulnerable).
 
-![KAPPA vs all attacks across epsilon](figures/asr_vs_epsilon_kappa.png)
+This project built three things to probe that gap: (1) **KAPPA**, a curvature-aware second-order attack; (2) a **reproducible evaluation pipeline** on Nebius Serverless AI H200s running KAPPA and five baselines against two clinical models at scale; and (3) a **geometry profiler**, a cheap triage tool that classifies each input's loss-surface terrain before any attack runs and predicts attack outcome without executing one.
+
+---
+
+**Central finding (two-part):**
+
+1. **Geometry may predicts vulnerability**: the local loss-surface geometry of a clinical input — computable from ~k HVP operations before running any attack — reliably identifies inputs that are robust to *any* gradient-based attack (`flat_masked` → 100% robust in both models tested, χ² p ≤ 0.001).
+
+2. **Architecture can shape attack selection**: BatchNorm CNNs (ECG) and GRU graph networks (STAGIN) differ in curvature *magnitude* (σ_max ~3,500×), not anisotropy (κ(H+λI@0.1) = 3.54 vs 1.0003). Newton-CG attacks exploit anisotropy, not magnitude — which explains why KAPPA does not outperform PGD on these models, and identifies the precise condition a model must satisfy for second-order attacks to have structural advantage.
+
+---
+
+## The Framework: Loss-Surface Triage
+
+Clinical robustness evaluation typically applies a single attack uniformly to all inputs. But clinical inputs have heterogeneous loss-surface geometry — some are flat (immune to gradient-based attacks), others curved (vulnerable), and among the curved, some are isotropic (first-order attacks are optimal) vs anisotropic (Newton methods have structural advantage). Applying one attack to all of them either over-tests safe inputs or under-tests vulnerable ones.
+
+```
+input clínico → [PROFILER geométrico] → geometry class → [ROUTER] → attack / certificate
+                (~k HVPs, before any attack)              (rule or learned)
+```
+
+**Profiler features** (single-pass Lanczos, ~k HVPs/subject):
+
+| Feature | Cost | What it reveals |
+|---|---|---|
+| ‖∇‖ | 1 backward | first-order signal / gradient masking detector |
+| σ_max | Lanczos | curvature magnitude |
+| μ_min | Lanczos | non-convexity / saddle structure |
+| κ(H+λI) | Lanczos | **anisotropy** — what Newton exploits |
+
+**Geometry taxonomy and routing:**
+
+| Class | Signature | Routed Attack |
+|---|---|---|
+| **flat-masked** | ‖∇‖≈0, σ_max≈0 | black-box (Square/SPSA) or skip |
+| **flat-with-gradient** | ‖∇‖>0, σ_max≈0 | PGD/APGD (1st order sufficient) |
+| **isotropic-curved** | σ_max high, κ≈1 | PGD large-step (Newton adds nothing) |
+| **anisotropic** | σ_max high, κ>>1 | **KAPPA** (Newton-CG + min-PD damping) |
+| **saddle** | μ_min<<0 | negative-curvature step |
+
+### MVP Validation
+
+Per-subject geometry profiled on 74 STAGIN + 85 ECG subjects (~30 HVPs/subject, single-pass Lanczos) and joined to per-subject attack outcomes.
+
+**STAGIN ε=0.001 — geometry class × attack outcome:**
+
+| Class | robust | FO only | KAPPA only | both | robust-rate [Wilson 95%] |
+|---|---|---|---|---|---|
+| **flat-masked** | 26 | 0 | 0 | 0 | **1.00 [0.87, 1.00]** |
+| flat-with-gradient | 9 | 2 | 0 | 0 | 0.82 [0.52, 0.95] |
+| isotropic-curved | 3 | 0 | 0 | 0 | 1.00 [0.44, 1.00] |
+| anisotropic | 21 | 9 | 0 | 4 | 0.62 [0.45, 0.76] |
+
+χ² p=0.020. **ECG ε=2:** flat-masked 1.00 [0.86, 1.00], χ² p=0.0005 (same pattern, independent dataset).
+
+![Geometry routing scatter](figures/geometry_routing_stagin.png)
+![Robustness by geometry class](figures/geometry_robustness_stagin.png)
+
+**`anisotropic → KAPPA` (kappa_only=0):** neither ECG (BatchNorm collapses H to σ_max≈4×10⁻⁵) nor STAGIN (κ=3.54, CG residual 0.16–0.22) inhabits the class where Newton-CG has structural advantage. This is a model-selection constraint, not a falsification of the routing hypothesis — it identifies what a model must look like for KAPPA routing to activate.
 
 ---
 
 ## What Is KAPPA?
 
-**KAPPA** (κ-**A**daptive **P**roximal **P**erturbation **A**ttack) is a second-order adversarial attack that replaces gradient steps with Newton steps, computed using Conjugate Gradient on Hessian-Vector Products. Unlike PGD and its variants (APGD, AutoAttack), KAPPA uses curvature information and is therefore effective on ill-conditioned loss surfaces where gradient direction alone is misleading.
+**KAPPA** (κ-**A**daptive **P**roximal **P**erturbation **A**ttack) is a second-order adversarial attack that replaces gradient steps with Newton steps, computed using Conjugate Gradient on Hessian-Vector Products. Unlike PGD and its variants (APGD, AutoAttack), KAPPA uses curvature information to navigate the loss surface.
 
 The implementation in [`hessian.py`](hessian.py) is model-agnostic and requires only a differentiable PyTorch `forward()`.
 
-**Hypothesis:** KAPPA's advantage over first-order attacks is predicted by the Hessian condition number κ.
-- κ ≈ 0 (moderately conditioned, e.g. BN-normalized CNNs): KAPPA ≈ PGD. Marginal advantage.
-- κ >> 0 (severely ill-conditioned, e.g. GNNs with incomplete normalization like STAGIN): KAPPA >> all first-order attacks.
+**Hypothesis:** KAPPA's advantage over first-order attacks is predicted by κ — specifically, in the `anisotropic` geometry class (σ_max high, κ>>1, CG convergent).
+
+**Result on these models:** neither ECG nor STAGIN lives in that class. The geometry analysis correctly predicts this post-hoc: KAPPA does not exceed the strongest first-order baseline at any ε tested.
+
+---
+
+## From Hypothesis to Corrected Result
+
+**Original hypothesis:** KAPPA would add little on the ECG CNN (BatchNorm smooths the loss surface) but expose hidden vulnerability on STAGIN (graph architecture, rank-deficient fMRI inputs).
+
+**What happened first:** the initial run showed a clear KAPPA advantage on STAGIN at small ε — consistent with the hypothesis.
+
+**What went wrong:** holding that result to the standard required for a clinical robustness claim, it dissolved. Four methodological failures inflated the initial gap:
+
+1. **Wrong input range for baselines** — off-the-shelf attacks assumed image-range inputs; STAGIN inputs are correlation matrices. Fixing the range alone erased most of the gap.
+2. **No paired statistics** — different patient pools per run made comparisons unreliable. A paired test on a consistent intersection pool showed the "advantage" was within noise.
+3. **Single-knob exploration** — KAPPA was tested at one λ value; sweeping all reasonable values as parallel H200 jobs removed the rest of the effect.
+4. **Non-deterministic GPU kernels** — pinning seeds was required for a fair comparison.
+
+**Corrected result (full damping sweep, McNemar paired tests):** KAPPA does not beat well-run gradient baselines on either model. On STAGIN it is clearly weaker at every λ tested (p ≤ 0.001). The geometry profiler is the contribution that survives: flat-and-silent inputs are 100% robust to every gradient-based attack; the terrain type predicts attack outcome before any attack runs.
+
+The lesson generalises: clinical data's non-standard structure (correlation matrices, waveform amplitudes) creates silent mismatches with tools built for vision. An evaluation can hand you a confident number that flips under a stricter protocol. The methodology matters more than the attack choice.
 
 ---
 
 ## Models
 
-| Model | Task | Dataset | Architecture | Test BACC | κ |
-|---|---|---|---|---|---|
-| **STAGIN** | fMRI sex classification | HCP-Rest S1200, n=1,080 | GIN + Self-Attention + GRU | **77.2%** | **178,695** |
-| **ECG CNN** | Rhythm classification | PhysioNet/CinC 2017 | 13-block dilated 1D CNN + BN | 87.5% | ≈ 8,000 |
+| Model | Task | Dataset | Architecture | Test BACC | κ(H+λI) at λ=0.1 | σ_max | Geometry class |
+|---|---|---|---|---|---|---|---|
+| **STAGIN** | fMRI sex classification | HCP-Rest S1200, n=1,080 | GIN + Self-Attention + GRU | **77.2%** | 3.54 | ~0.133 | anisotropic (moderate κ, poor CG) |
+| **ECG CNN** | Rhythm classification | PhysioNet/CinC 2017 | 13-block dilated 1D CNN + BN | 87.5% | 1.0003 | ~3.8×10⁻⁵ | flat (BatchNorm collapses H) |
 
-The two models serve as a controlled experiment: same attack code, architectures that differ only in normalization, opposite results for KAPPA vs PGD.
+σ_max differs ~3,500× between models; κ at a common λ is similar. BatchNorm is the mechanism that collapses the ECG Hessian — every convolutional block's output is re-normalized before the loss sees it.
+
+![σ_max vs κ at common λ](figures/conditioning_sigma_vs_kappa.png)
 
 ---
 
 ## Results
 
-### STAGIN — fMRI (κ = 178,695) · 82–84 Male test subjects (n varies by ε)
+### STAGIN — fMRI · Damping sweep (λ ∈ {0.13…0.50} + adaptive, n≈74 pool subjects)
 
-![Bar chart at eps 0.001](figures/bar_attack_eps001.png)
+| Attack | ε=0.001 | ε=0.01 | Note |
+|---|---|---|---|
+| **KAPPA (best λ)** | **4–5%** | **49–55%** | All λ ≥ 0.13 tested |
+| APGD-CE | 14.9% | — | Best first-order at ε=0.001 |
+| PGD-40 | — | 70.3% | Best first-order at ε=0.01 |
 
-| Attack | ε=0.001 | ε=0.005 | ε=0.01 | ε=0.05 | ε=0.1 | Time @ ε=0.001 |
-|---|---|---|---|---|---|---|
-| **KAPPA (ours)** | **60.7%** | **58.5%** | **50.0%** | **92.7%** | **93.9%** | 741s |
-| APGD-CE | 22.6% | 30.5% | 29.3% | 86.6% | 74.4% | 783s |
-| PGD-40 | 31.0% | 35.4% | 41.5% | 54.9% | 53.7% | 308s |
-| AutoAttack | 17.9% | 15.9% | 28.1% | 62.2% | 65.9% | 2,762s |
-| C&W L2 | 16.7% | 18.3% | 18.3% | 18.3% | 18.3% | 52s |
-| PGD-500 | 13.1% | 29.3% | 42.7% | 51.2% | 53.7% | 3,771s |
+McNemar paired test: KAPPA < best first-order at all λ, p ≤ 0.001. CG did not converge (residual 0.16–0.22) — STAGIN's moderate κ=3.54 is insufficient for Newton to gain traction. Geometry routing correctly predicts this: STAGIN sits in `anisotropic` (moderate), not the high-κ regime where KAPPA activates.
 
-Full results: [`output/attack_results.json`](output/attack_results.json) · Peak VRAM: 86.9 GB · Job: `aijob-e00b1w63p1e576vgxc`
+### ECG CNN — PhysioNet 2017 · Untargeted robust-ASR
 
-### ECG CNN — PhysioNet 2017 (κ ≈ 8,000) · Control experiment
+![ECG robust-ASR](figures/ecg_robust_asr.png)
 
-| Method | ε | True ASR |
+| Attack | ε=2 | ε=10 |
 |---|---|---|
-| PGD-40 | 10 | **86.5%** |
-| KAPPA | 10 | 72.9% |
-| PGD-40 | 2 | 24.0% |
-| KAPPA | 2 | 21.9% |
+| **KAPPA (ours)** | **12.5%** | **43.5%** |
+| PGD-40 | 24.0% | 86.5% |
+| PGD-500 | — | — |
+| APGD-CE | — | — |
+| AutoAttack | — | — |
 
-On the BN-normalized ECG model, PGD outperforms KAPPA — as predicted by κ ≈ 8,000. The baseline validates the hypothesis.
+KAPPA is the weakest attack at both budgets on the ECG CNN as well.
 
 ---
 
@@ -74,14 +150,14 @@ On the BN-normalized ECG model, PGD outperforms KAPPA — as predicted by κ ≈
     saved_model/best_model_fmri.pth       ← STAGIN checkpoint (BACC=77.2%)
         │ mount at /workspace/data
         ▼
-  Nebius AI Job (H200 SXM · 141 GB HBM3e)
-    test_fmri_model.py   ← 6 attacks × 5 ε × 216 test subjects
-    FC windows computed on-the-fly per batch (no precompute needed)
-    partial save after each ε  ← resume-safe
+  Nebius AI Job fleet (H200 SXM · 141 GB HBM3e)
+    1 baselines job per ε  +  N KAPPA-only jobs per (λ, ε)
+    Each job writes output/<run_id>/  ← no collision
         │ results → S3
         ▼
   Local machine
-    make download-results  ← output/attack_results.json
+    make download-results  ← output/<run_id>/attack_results.json
+    python scripts/analyze_sweep.py output/
 ```
 
 | Resource | Value |
@@ -89,12 +165,12 @@ On the BN-normalized ECG model, PGD outperforms KAPPA — as predicted by κ ≈
 | GPU | H200 SXM — 141 GB HBM3e |
 | Platform | `gpu-h200-sxm` |
 | Preset | `1gpu-16vcpu-200gb` |
-| Peak VRAM | 86,876 MB (exceeds A100 80 GB limit) |
+| Peak VRAM | ~86.9 GB (exceeds A100 80 GB limit) |
 | Base image | `pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime` |
-| Actual runtime | ~10h (6 attacks × 5 epsilons × 216 subjects) |
+| Sweep runtime | ~2–3h wall-clock (jobs run in parallel) |
 | Total cost | < $100 |
 
-**Why H200?** KAPPA requires double-backward HVPs through STAGIN's GRU. With batch=32, peak VRAM hits 86.9 GB — beyond an A100's 80 GB. The H200 (141 GB) is the minimum viable GPU for this experiment.
+**Why H200?** KAPPA requires double-backward HVPs through STAGIN's GRU. With batch=32, peak VRAM hits ~87 GB — beyond an A100's 80 GB. The H200 (141 GB) is the minimum viable GPU for this experiment.
 
 ---
 
@@ -103,124 +179,74 @@ On the BN-normalized ECG model, PGD outperforms KAPPA — as predicted by κ ≈
 ### Quick validation — smoke test (no GPU, no data, no accounts)
 
 ```bash
-# Python 3.11 recommended (3.9+ required)
-pyenv local 3.11.9        # if using pyenv
-python3 -m venv .venv
-source .venv/bin/activate
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-
 python test_fmri_model.py --smoke-test --smoke-samples 8 --smoke-epsilons 0.05
-# Expected: smoke test PASSED — KAPPA and PGD ran without errors
+# Expected: smoke test PASSED
+python scripts/profile_geometry.py --model stagin --smoke-test
+# Expected: geometry records for synthetic subjects (grad_norm, sigma_max, kappa_at_lambda)
 ```
 
----
+### Single job on Nebius H200
 
-### Full H200 attack sweep (~10h, ~$100)
-
-The model checkpoint and preprocessed ROI timeseries are already in a shared Nebius S3 bucket accessible with the read-only key below. You only need your own Nebius account to submit the job.
-
-#### Prerequisites
-
-- Nebius account with credits ([console.eu-north1.nebius.cloud](https://console.eu-north1.nebius.cloud))
-- nebius CLI and AWS CLI
-
-#### Step 1 — Install CLIs
+Prerequisites: Nebius account, nebius CLI, AWS CLI, `.env` with `PARENT_ID`/`BUCKET_ID`/`S3_BUCKET`.
 
 ```bash
-# Nebius CLI
-curl -sSL https://storage.eu-north1.nebius.cloud/cli/install.sh | bash
-exec -l $SHELL
-nebius auth login
-
-# AWS CLI
-brew install awscli      # macOS
-# or: sudo apt install awscli
+make upload-data       # sync preprocessed inputs + checkpoints to S3 (once)
+make deploy-attack     # launch H200 job; results stream to S3
+make download-results  # pull results when job completes
 ```
 
-#### Step 2 — Configure read-only access to shared data
+### Full damping sweep on Nebius H200
 
-The preprocessed ROI timeseries and model checkpoint are available in a shared
-read-only S3 bucket — no HCP registration required. To request access credentials,
-contact **diegocampos.br at gmail** with subject `KAPPA S3 access`.
-
-Once you have the credentials:
+Prerequisites: same as above.
 
 ```bash
-aws configure --profile nebius-readonly
-# Access Key ID:     <provided on request>
-# Secret Access Key: <provided on request>
-# Default region name:   eu-north1
-# Default output format: (leave blank)
-```
+# Preview (no submission)
+DRY_RUN=1 bash scripts/deploy_sweep.sh
 
-#### Step 3 — Create your Nebius resources (one-time console setup)
+# Submit fleet (1 baselines job + N KAPPA-only jobs per ε)
+bash scripts/deploy_sweep.sh
 
-1. [console.eu-north1.nebius.cloud](https://console.eu-north1.nebius.cloud) → **Projects** → Create project → note your **Project ID**
-2. **Storage → Object Storage** → Create bucket → note your **bucket name**
-3. **IAM → Service Accounts** → Create SA with `storage.editor` role → **Static Keys** → note your **Key ID** and **Secret**
+# Monitor until all jobs reach a terminal state
+bash scripts/monitor_fleet.sh
 
-#### Step 4 — Configure your Nebius credentials
+# Download results
+make download-results
 
-```bash
-aws configure --profile nebius
-# Access Key ID:     <your SA key ID>
-# Secret Access Key: <your SA secret>
-# Default region name:   eu-north1
-# Default output format: (leave blank)
-```
-
-#### Step 5 — Configure .env
-
-```bash
-cp .env.template .env
-# Edit .env: fill in PARENT_ID, BUCKET_ID, S3_BUCKET
-
-# Get BUCKET_ID with:
-nebius storage bucket get-by-name \
-  --name <your-bucket-name> \
-  --parent-id <your-project-id> \
-  --format jsonpath='{.metadata.id}'
-```
-
-#### Step 6 — Sync shared data to your bucket (~1.8 GB)
-
-```bash
-mkdir -p data/fmri/hcp/roi saved_model
-
-aws s3 sync s3://precision-med-hcp/data/ data/ \
-  --profile nebius-readonly \
-  --endpoint-url https://storage.eu-north1.nebius.cloud
-
-aws s3 sync s3://precision-med-hcp/saved_model/ saved_model/ \
-  --profile nebius-readonly \
-  --endpoint-url https://storage.eu-north1.nebius.cloud
-
-make upload-data        # upload to your bucket (one-time, ~1.8 GB)
-```
-
-#### Step 7 — Deploy and monitor
-
-```bash
-make deploy-attack      # uploads code, submits H200 job
-make logs               # tail live output
-make download-results   # fetch output/<run_id>/attack_results.json when done
+# Analyze: McNemar per λ per ε, paired on intersection pool
+python scripts/analyze_sweep.py output/
 ```
 
 **Resume a failed job**
 
 ```bash
 make deploy-attack RESUME_RUN_ID=<previous_run_id>
-# Reloads partial results from S3, skips completed epsilons
 ```
 
 **Reproduce figures from existing results**
 
 ```bash
-pip install matplotlib numpy
 python generate_figures.py
-# figures/asr_vs_epsilon_kappa.png
-# figures/bar_attack_eps001.png
-# figures/kappa_vs_autoattack_gap.png
+# figures/stagin_damping_sweep.png
+# figures/ecg_robust_asr.png
+# figures/conditioning_sigma_vs_kappa.png
+
+python scripts/geometry_routing.py output/
+# figures/geometry_routing_stagin.png
+# figures/geometry_robustness_stagin.png
+# figures/geometry_routing_ecg.png
+# figures/geometry_robustness_ecg.png
+```
+
+### Validate HVP and Hessian spectrum
+
+```bash
+# Smoke (CPU, synthetic data)
+python scripts/hvp_validation.py --smoke-test
+
+# Full (GPU, real checkpoint)
+python scripts/hvp_validation.py --config configs/config.yaml --n-inputs 8
 ```
 
 ---
@@ -229,9 +255,13 @@ python generate_figures.py
 
 ```
 ├── hessian.py              KAPPA + PGD implementations (core, model-agnostic)
-├── test_fmri_model.py      Full adversarial evaluation sweep (6 attacks × 5 ε)
+├── test_fmri_model.py      Full adversarial evaluation sweep (STAGIN)
+├── test_pytorch_model.py   ECG CNN evaluation
 ├── train_fmri.py           STAGIN training (OneCycleLR, early stopping)
-├── generate_figures.py     Reproduce all result figures from attack_results.json
+├── generate_figures.py     Reproduce all result figures
+├── Makefile                Nebius job orchestration (upload-data / deploy-attack / download-results / sweep)
+├── Dockerfile              H200 container image (pytorch 2.2.2 + cuda 12.1)
+├── .env.template           Required env vars: PARENT_ID, BUCKET_ID, S3_BUCKET
 ├── model/
 │   ├── STAGIN.py           Spatio-Temporal Attention GIN (Kim & Ye, NeurIPS 2021)
 │   └── CNN.py              Han et al. dilated 1D CNN (ECG)
@@ -239,27 +269,32 @@ python generate_figures.py
 │   ├── fMRILoader.py       HCP fMRI loader (sliding-window FC matrices)
 │   └── DataLoader.py       ECG loader
 ├── scripts/
-│   ├── extract_roi_timeseries.py   CIFTI → 333 Gordon ROIs (streams from HCP S3)
-│   ├── precompute_fc.py            ROI timeseries → sliding-window FC matrices
-│   └── plot_results.py             Additional result plots
-├── configs/config.yaml     Attack + training hyperparameters
+│   ├── profile_geometry.py     Per-subject geometry profiler (‖∇‖, σ_max, κ — ~k HVPs/subject)
+│   ├── geometry_routing.py     Join geometry↔outcomes, separability analysis, routing figures
+│   ├── paired_stats.py         McNemar + Wilson CI + bootstrap from per_subject JSON
+│   ├── analyze_sweep.py        Damping sweep analysis (intersection pool, paired stats per λ)
+│   ├── hvp_validation.py       HVP autodiff vs FD, κ multi-input, PD-check
+│   ├── deploy_sweep.sh         Fan-out: one Nebius job per (λ, ε)
+│   └── monitor_fleet.sh        Poll job states until all terminal
+├── configs/
+│   ├── config.yaml             Default attack + training hyperparameters
+│   ├── config_ecg.yaml         ECG-specific config
+│   └── config_damping_sweep.yaml  Damping sweep config
+├── tests/                  Unit tests for KAPPA, HVP, and attack constraints
 ├── saved_model/            Pre-trained checkpoints (STAGIN BACC=77.2%)
-├── output/
-│   └── attack_results.json Full 5-epsilon sweep results (real run, H200)
-├── figures/                Generated result plots
-├── Makefile                Nebius job orchestration (deploy / logs / download)
-└── Dockerfile              Container image for Nebius AI Jobs
+├── output/                 Per-run results (attack_results.json, geometry_*.json per run)
+├── figures/                Generated result plots (PNG)
+└── requirements.txt
 ```
 
 ---
 
 ## Citation
 
-KAPPA method: *manuscript in preparation*
+KAPPA and Geometry Profiler method: *manuscript in preparation*
 
 STAGIN: Kim et al., [*Understanding Graph Isomorphism Network for rs-fMRI Functional Connectivity Analysis*](https://arxiv.org/abs/2111.01543), NeurIPS 2021  
 AutoAttack: Croce & Hein, [*Reliable evaluation of adversarial robustness with an ensemble of diverse parameter-free attacks*](https://arxiv.org/abs/2003.01690), ICML 2020  
-C&W: Carlini & Wagner, [*Towards Evaluating the Robustness of Neural Networks*](https://arxiv.org/abs/1608.04644), IEEE S&P 2017  
 HCP dataset: Van Essen et al., [*The WU-Minn Human Connectome Project*](https://doi.org/10.1016/j.neuroimage.2013.05.041), NeuroImage 2013  
 ECG CNN: Han et al., [*Deep learning models for electrocardiograms are susceptible to adversarial attack*](https://doi.org/10.1038/s41591-020-0791-x), Nature Medicine 26(3):360–363, 2020
 

@@ -1,0 +1,33 @@
+# Fase 3 — Barrido de damping λ do KAPPA (STAGIN), pool completo, potência estatística.
+# O experimento DECISIVO: testa se existe um λ minimamente-PD (≈|μ_min|+λ_min) onde o KAPPA
+# supera o PGD com significância (McNemar pareado, via scripts/paired_stats.py sobre os per_subject).
+#
+# Uso no fan-out (Makefile deploy-sweep) — CLI overrides têm precedência sobre este arquivo:
+#   * 1 job de baselines:  --only pgd,pgd500,apgd  (independe de λ; roda 1x por ε)
+#   * N jobs KAPPA-only:   --only kappa --damping-mode fixed --lambda-reg <λ> --epsilon <ε>
+#                          + o braço --damping-mode adaptive_exact (λ automático = |μ_min|+λ_min)
+# Grade sugerida: λ ∈ {0.13,0.15,0.20,0.30,0.50} (fixed) + adaptive_exact; ε ∈ {0.001,0.01}.
+
+model:
+  hidden_dim: 64
+  sparsity: 30
+
+attack:
+  batch_size: 32
+  epsilon_sweep: [0.001, 0.01]     # ε clínico relevante (baixo); sobrescrito por --epsilon no fan-out
+  pgd_steps: 40
+  pgd_matched_budget_steps: 500
+  pgd_restarts: 5                  # PGD forte/justo (random restarts) — baseline no seu melhor
+  newton_cg_outer_steps: 5
+  newton_cg_cg_iters: 50
+  newton_cg_lambda: 0.15           # λ candidato (minimamente-PD ≈ |μ_min|+λ_min); sobrescrito por --lambda-reg
+  damping_mode: fixed              # grade de λ fixo; o braço adaptativo usa --damping-mode adaptive_exact
+  hvp_mode: autodiff               # HVP exato (fallback FD central só em NaN, logado)
+  fd_eps: 1.0e-3
+  data_min: -1.0
+  data_max: 1.0
+  # STAGIN: AutoAttack inválido (modelo não é f(v) pura); APGD-CE (full-batch) é o baseline gradiente.
+  run_autoattack: false
+  run_apgd: true
+  run_pgd500: true
+  # Fan-out (Fase 5): sobrescrever com --only para separar KAPPA dos baselines e não duplicar compute.

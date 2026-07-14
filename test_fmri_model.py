@@ -41,11 +41,11 @@ class ForwardWrapper(torch.nn.Module):
     """Wraps STAGIN for single-input attack libraries (AutoAttack, torchattacks).
 
     These libraries call forward() with variable batch sizes n ≤ B.  We pad v to
-    the stored batch size B so a and t always match — slicing a/t is not used because
-    BatchNorm cross-contamination from sub-batches still causes shape divergences in
-    _collate_adjacency.  Model is kept in train() mode throughout so cuDNN RNN backward
-    works; eval() must NOT be restored inside forward because the backward pass runs
-    after forward() returns and also requires train() mode.
+    the stored batch size B so a and t always match.  The model's train/eval mode is
+    set ONCE by the caller (eval mode with only the GRU in train mode — see
+    set_attack_mode) and must NOT be changed here: query-based attacks (Square) and
+    restart-based ones (APGD) require deterministic forward passes, so dropout/BatchNorm
+    stay in eval; only the cuDNN GRU is kept in train() so its backward works.
     """
     def __init__(self, model, a, t, endpoints):
         super().__init__()
@@ -63,12 +63,25 @@ class ForwardWrapper(torch.nn.Module):
             v_run = torch.cat([v, pad], dim=0)
         else:
             v_run = v
-        # cuDNN RNN backward requires train() mode.  Do NOT restore eval after this
-        # call — the backward pass happens after forward() returns and also needs
-        # train() mode.
-        self.model.train()
         logits, _, _, _ = self.model(v_run, self._a, self._t, self.endpoints)
         return logits[:n]
+
+
+class _NormalizedModel(torch.nn.Module):
+    """Wrap a model so library attacks operate in a normalized [0,1] box.
+
+    torchattacks and the autoattack package hardcode clamp(0,1); our inputs are NOT in
+    [0,1] (STAGIN FC ∈ [-1,1]). We attack z ∈ [0,1] and let the model see the real input
+    x = z*(hi-lo)+lo, so the [0,1] clamp corresponds exactly to the valid box [lo,hi] and
+    an L∞ radius eps_z = eps/(hi-lo) in z-space equals eps in x-space.
+    """
+    def __init__(self, base, lo, hi):
+        super().__init__()
+        self.base = base
+        self.lo, self.hi = float(lo), float(hi)
+
+    def forward(self, z):
+        return self.base(z * (self.hi - self.lo) + self.lo)
 
 
 def _infer_input_dim(ckpt_path):
@@ -140,6 +153,17 @@ def parse_args():
     p.add_argument("--smoke-epsilons", type=float, nargs="+", default=[0.05])
     p.add_argument("--smoke-input-dim", type=int, default=16,
                    help="Tiny input_dim for fast CPU smoke test (uses random weights)")
+    # --- Fan-out overrides: run one job per (λ, ε) without generating N config files ---
+    p.add_argument("--lambda-reg", type=float, default=None,
+                   help="override newton_cg_lambda (λ do damping)")
+    p.add_argument("--epsilon", type=float, nargs="+", default=None,
+                   help="override epsilon_sweep (ex.: --epsilon 0.001 0.01)")
+    p.add_argument("--damping-mode", default=None,
+                   choices=["fixed", "lanczos", "adaptive_exact"])
+    p.add_argument("--hvp-mode", default=None, choices=["autodiff", "fd"])
+    p.add_argument("--only", default=None,
+                   help="lista de ataques a rodar p/ fan-out sem duplicar baselines: "
+                        "combinação de kappa,pgd,pgd500,apgd,autoattack (ex.: --only kappa)")
     for k, v in DEFAULTS.items():
         if k in ("output_dir", "run_id"):
             continue
@@ -153,37 +177,101 @@ def get_gpu_memory_mb():
     return 0.0
 
 
-def estimate_condition_number(model, v, a, t, endpoints, n_vectors=10):
-    """Estimate Hessian condition number κ via Rayleigh quotients on random directions."""
-    n = min(4, v.shape[0])
-    v_probe = v[:n].clone()
-    a_probe  = a[:n]
-    t_probe  = t[:, :n, :]
-    targets  = torch.zeros(n, dtype=torch.long, device=v.device)
-    rq_list  = []
+def set_attack_mode(model):
+    """Deterministic attack/HVP mode (fix for AutoAttack<APGD-CE and ε-varying denominator).
 
-    for _ in range(n_vectors):
-        v_in = v_probe.clone().detach().requires_grad_(True)
-        logits, _, _, _ = model(v_in, a_probe, t_probe, endpoints)
-        loss_per_sample = F.cross_entropy(logits, targets, reduction="none")
-        rand_dir = torch.randn_like(v_in)
-        rand_dir = rand_dir / (rand_dir.norm() + 1e-8)
+    Run everything in eval() — dropout off, BatchNorm uses running stats (no padding
+    cross-contamination) — EXCEPT the timestamp-encoder GRU, kept in train() so cuDNN
+    RNN backward works. The GRU is num_layers=1, dropout=0.0, so its train mode is
+    deterministic and identical to eval. This makes every forward pass deterministic,
+    which query-based (Square) and restart-based (APGD) attacks require.
+    """
+    model.eval()
+    rnn = getattr(getattr(model, "timestamp_encoder", None), "rnn", None)
+    if rnn is not None:
+        rnn.train()
 
-        grad = torch.autograd.grad(
-            loss_per_sample, v_in,
-            grad_outputs=torch.ones_like(loss_per_sample),
-            create_graph=True, retain_graph=True,
-        )[0]
-        Hv = torch.autograd.grad(grad, v_in, grad_outputs=rand_dir, retain_graph=False)[0]
 
-        extra = tuple(range(1, rand_dir.dim()))
-        rq = (rand_dir * Hv).sum(dim=extra) / ((rand_dir * rand_dir).sum(dim=extra) + 1e-8)
-        rq_list.extend(rq.detach().cpu().tolist())
+def estimate_condition_number(model, v, a, t, endpoints, lambda_min=0.1,
+                              n_iter=200, tol=1e-3, seed=42):
+    """Rigorous loss-Hessian spectrum via matrix-free Lanczos on the per-sample HVP.
 
-    rq_abs = [abs(r) for r in rq_list if not np.isnan(r)]
-    if len(rq_abs) < 2 or max(rq_abs) < 1e-12:
-        return float("nan")
-    return float(max(rq_abs) / max(min(rq_abs), 1e-12))
+    The loss Hessian is generally indefinite, so the meaningful quantities are singular
+    values (σ = |eigenvalue|) and, above all, the condition number of the damped
+    operator κ(H+λI) that Conjugate Gradient actually
+    solves. We compute, for one representative test input (single-sample Hessian):
+      μ_max = largest algebraic eigenvalue  (Lanczos, which='LA')
+      μ_min = smallest algebraic eigenvalue (Lanczos, which='SA')
+      σ_max = max(|μ_max|, |μ_min|)
+      λ     = max(0, -μ_min) + λ_min                       (the damping, as in KAPPA)
+      κ(H+λI) = (μ_max + λ) / (μ_min + λ)                  (well-defined, finite, CG-relevant)
+      σ_min best-effort (Lanczos which='SM'); κ(H) = σ_max/σ_min (may be ~unbounded if
+             H is rank-deficient — expected for FC inputs, so reported with a flag).
+    Returns a dict with the full protocol logged. Runs in the deterministic attack mode
+    (eval + GRU train) since it backprops through the cuDNN GRU.
+    """
+    from scipy.sparse.linalg import LinearOperator, eigsh
+
+    set_attack_mode(model)
+    v1 = v[:1].clone().detach().requires_grad_(True)
+    a1, t1 = a[:1], t[:, :1, :]
+    target1 = torch.zeros(1, dtype=torch.long, device=v.device)
+
+    logits, _, _, _ = model(v1, a1, t1, endpoints)
+    loss = F.cross_entropy(logits, target1, reduction="sum")
+    grad = torch.autograd.grad(loss, v1, create_graph=True, retain_graph=True)[0]
+
+    shape = v1.shape
+    d = int(v1.numel())
+
+    def matvec(x_np):
+        xv = torch.as_tensor(x_np, dtype=v1.dtype, device=v1.device).view(shape)
+        Hv = torch.autograd.grad(grad, v1, grad_outputs=xv, retain_graph=True)[0]
+        return Hv.detach().reshape(-1).double().cpu().numpy()
+
+    H = LinearOperator((d, d), matvec=matvec, dtype=np.float64)
+
+    def _extreme(which):
+        try:
+            val = eigsh(H, k=1, which=which, return_eigenvectors=False,
+                        maxiter=n_iter, tol=tol)
+            return float(val[0])
+        except Exception as e:
+            print(f"  [κ] eigsh({which}) failed: {e}", flush=True)
+            return None
+
+    mu_max = _extreme("LA")   # largest algebraic
+    mu_min = _extreme("SA")   # smallest algebraic (most negative)
+    sigma_min = _extreme("SM")  # smallest magnitude (best-effort; matrix-free Lanczos is unreliable here)
+
+    info = {"dim": d, "protocol": {"method": "Lanczos (scipy eigsh) on matrix-free HVP",
+                                   "n_probe_inputs": 1, "maxiter": n_iter, "tol": tol,
+                                   "lambda_min": lambda_min, "seed": seed}}
+    if mu_max is None or mu_min is None:
+        info["error"] = "eigsh LA/SA failed"
+        return info
+
+    sigma_max = max(abs(mu_max), abs(mu_min))
+    lam = max(0.0, -mu_min) + lambda_min
+    info["mu_max"] = mu_max
+    info["mu_min"] = mu_min
+    info["sigma_max"] = sigma_max
+    info["sigma_min"] = None if sigma_min is None else abs(sigma_min)
+    info["lambda_eff"] = lam
+    info["kappa_H_reg"] = (mu_max + lam) / (mu_min + lam)   # κ(H+λI): finite, CG-relevant
+    # κ at COMMON reference λ_min values → directly comparable across experiments
+    # (raw κ(H) is ∞ for both models; κ(H+λI) alone is confounded by each run's λ_min).
+    info["kappa_H_reg_at_ref_lambda"] = {
+        f"{lm:g}": (mu_max + max(0.0, -mu_min) + lm) / (mu_min + max(0.0, -mu_min) + lm)
+        for lm in (1e-6, 1e-3, 1e-1)
+    }
+    if sigma_min is not None and abs(sigma_min) > 1e-12:
+        info["kappa_H"] = sigma_max / abs(sigma_min)
+        info["kappa_H_rank_deficient"] = abs(sigma_min) < 1e-6
+    else:
+        info["kappa_H"] = None
+        info["kappa_H_rank_deficient"] = True   # smallest σ ≈ 0 → κ(H) formally unbounded
+    return info
 
 
 def evaluate_clean(loader, model, device):
@@ -200,89 +288,141 @@ def evaluate_clean(loader, model, device):
 
 def _run_attacks_batch(forward_v, wrapper, v, labels, epsilon, cfg):
     """
-    Run all 6 attacks on one batch. True ASR: fraction of non-target subjects
-    (pred != 0 before attack) whose prediction flips to class 0 after attack.
-    Binary classification: targeted (flip→0) == untargeted for class-1 subjects.
+    Run all 6 attacks on one batch. True ASR is measured ONLY over subjects that are
+    truly Male (label != 0) AND predicted Male on clean input (pred_clean != 0) — the
+    standard robustness convention of evaluating on originally-correctly-classified
+    examples. On this set, "targeted (flip→0)" and "untargeted from the true label" are
+    the SAME objective in binary classification, so KAPPA/PGD (targeted→0) and the
+    baselines are compared on equal footing. Returns (aggregate counts, per-subject preds).
     """
+    # Re-assert the attack mode before measuring pred_clean: a library attack on a previous
+    # batch can leave the model in train() (dropout on) → nondeterministic clean preds and a
+    # drifting "correctly-classified" pool across ε. eval() (dropout off) + GRU-train is
+    # deterministic; global cuDNN determinism is avoided (it hangs the double-backward HVP).
+    set_attack_mode(wrapper.model)
     targets = torch.zeros_like(labels)
     with torch.no_grad():
         pred_clean = forward_v(v).argmax(1)
-    not_target = (pred_clean != targets)
+    # Fair comparison: only correctly-classified Male subjects (true Male AND predicted Male).
+    # Removes the false-Male group (label=Female, pred=Male) that otherwise handed KAPPA/PGD
+    # free wins relative to attacks driven from the true label.
+    not_target = (pred_clean != targets) & (labels != targets)
 
     def _asr(v_adv):
         with torch.no_grad():
             pred = forward_v(v_adv).argmax(1)
         fl = ((not_target) & (pred == targets)).sum().item()
-        return fl, not_target.sum().item()
+        return fl, not_target.sum().item(), pred
 
     res = {}
+    n = labels.shape[0]
+    # Per-subject predictions: defensive redundancy so any future metric change can be
+    # recomputed offline from attack_results.json without a paid re-run. Sentinel -1 marks
+    # an attack that did not run for this batch.
+    per_subject = {
+        "labels":     labels.detach().cpu().tolist(),
+        "pred_clean": pred_clean.detach().cpu().tolist(),
+    }
+    for k in ("newton_cg", "pgd_40", "pgd_500", "autoattack", "apgd_ce"):
+        per_subject[k] = [-1] * n
 
-    # Newton-CG
-    t0 = time.time()
-    v_adv = targeted_attack(forward_v, v, targets, epsilon=epsilon,
-                             num_steps=cfg.get("newton_cg_outer_steps", 5),
-                             max_iter=cfg.get("newton_cg_cg_iters", 50), verbose=False)
-    fl, nt = _asr(v_adv)
-    res["newton_cg"] = {"flipped": fl, "nontarget": nt, "time_s": time.time() - t0}
+    # Valid input box for the (L∞ ε-ball) ∩ (domain) projection. FC is Pearson correlation
+    # ∈ [dmin, dmax] (default [-1,1]). KAPPA/PGD clamp to this box directly; AutoAttack/APGD
+    # (which hardcode clamp(0,1)) run in a [0,1] space that maps to it.
+    dmin = float(cfg.get("data_min", -1.0))
+    dmax = float(cfg.get("data_max", 1.0))
+    span = dmax - dmin
+    model_z = _NormalizedModel(wrapper, dmin, dmax)
+    to_z   = lambda x: (x - dmin) / span
+    from_z = lambda z: z * span + dmin
+    eps_z  = epsilon / span
+    # Ablation flag: whether KAPPA/PGD also project onto the valid box [dmin,dmax].
+    # (The baseline wrapper always maps its [0,1] clamp to [dmin,dmax] regardless.)
+    # Set newton_pgd_box_clamp: false to test whether the box clamp penalises KAPPA.
+    _clamp = cfg.get("newton_pgd_box_clamp", True)
+    clamp_lo = dmin if _clamp else None
+    clamp_hi = dmax if _clamp else None
 
-    # PGD-40
-    t0 = time.time()
-    v_adv = pgd_attack(forward_v, v, targets, epsilon=epsilon,
-                        num_steps=cfg.get("pgd_steps", 40))
-    fl, nt = _asr(v_adv)
-    res["pgd_40"] = {"flipped": fl, "nontarget": nt, "time_s": time.time() - t0}
+    # Newton-CG (KAPPA) — targeted → class 0, projected onto (L∞) ∩ [dmin,dmax].
+    # return_info logs the per-step μ_min/λ actually used (Lanczos-exact damping → PD).
+    # Gated by run_kappa_attack so a baselines-only fan-out job can skip it.
+    if cfg.get("run_kappa_attack", True):
+        t0 = time.time()
+        v_adv, dmp = targeted_attack(forward_v, v, targets, epsilon=epsilon,
+                                     lambda_reg=cfg.get("newton_cg_lambda", 0.1),
+                                     num_steps=cfg.get("newton_cg_outer_steps", 5),
+                                     max_iter=cfg.get("newton_cg_cg_iters", 50), verbose=False,
+                                     data_min=clamp_lo, data_max=clamp_hi,
+                                     lanczos_iters=cfg.get("lanczos_iters", 30), return_info=True,
+                                     hvp_mode=cfg.get("hvp_mode", "autodiff"), fd_eps=cfg.get("fd_eps", 1e-3),
+                                     damping_mode=cfg.get("damping_mode", "lanczos"))
+        fl, nt, pred = _asr(v_adv)
+        res["newton_cg"] = {"flipped": fl, "nontarget": nt, "time_s": time.time() - t0, "damping": dmp}
+        per_subject["newton_cg"] = pred.detach().cpu().tolist()
 
-    # PGD-500 (matched compute budget: 5 outer × 50 CG iters × 2 = 500 backward passes)
-    t0 = time.time()
-    v_adv = pgd_attack(forward_v, v, targets, epsilon=epsilon,
-                        num_steps=cfg.get("pgd_matched_budget_steps", 500))
-    fl, nt = _asr(v_adv)
-    res["pgd_500"] = {"flipped": fl, "nontarget": nt, "time_s": time.time() - t0}
+    # PGD-40 — targeted → class 0. Gated (run_pgd) for kappa-only fan-out jobs.
+    if cfg.get("run_pgd", True):
+        t0 = time.time()
+        v_adv = pgd_attack(forward_v, v, targets, epsilon=epsilon,
+                            num_steps=cfg.get("pgd_steps", 40), data_min=clamp_lo, data_max=clamp_hi,
+                            num_restarts=cfg.get("pgd_restarts", 1))
+        fl, nt, pred = _asr(v_adv)
+        res["pgd_40"] = {"flipped": fl, "nontarget": nt, "time_s": time.time() - t0}
+        per_subject["pgd_40"] = pred.detach().cpu().tolist()
 
-    # AutoAttack  (binary: DLR and FAB-T don't work with 2 classes; use apgd-ce + square)
+    # PGD-500 (matched compute budget: 5 outer × 50 CG iters × 2 = 500 backward passes) — targeted → 0
+    if cfg.get("run_pgd500", True):
+        t0 = time.time()
+        v_adv = pgd_attack(forward_v, v, targets, epsilon=epsilon,
+                            num_steps=cfg.get("pgd_matched_budget_steps", 500),
+                            data_min=clamp_lo, data_max=clamp_hi)
+        fl, nt, pred = _asr(v_adv)
+        res["pgd_500"] = {"flipped": fl, "nontarget": nt, "time_s": time.time() - t0}
+        per_subject["pgd_500"] = pred.detach().cpu().tolist()
+
+    # AutoAttack — UNTARGETED from the true label, run in the normalized [0,1] space so the
+    # library's hardcoded clamp(0,1) corresponds to the true valid box [dmin,dmax].
+    # Targeted AutoAttack is unavailable for binary (APGD-T/FAB-T use DLR, undefined for 2
+    # classes) → custom ensemble apgd-ce+square; on correctly-classified-Male ≡ targeted→0.
     if cfg.get("run_autoattack", True):
         try:
             from autoattack import AutoAttack
             t0 = time.time()
-            adversary = AutoAttack(wrapper, norm="Linf", eps=epsilon,
+            adversary = AutoAttack(model_z, norm="Linf", eps=eps_z,
                                    version="custom",
                                    attacks_to_run=["apgd-ce", "square"],
                                    verbose=False)
-            v_adv = adversary.run_standard_evaluation(v.clone(), labels.long(),
-                                                       bs=v.shape[0])
-            fl, nt = _asr(v_adv)
+            z_adv = adversary.run_standard_evaluation(to_z(v).clone(), labels.long(),
+                                                      bs=v.shape[0])
+            v_adv = from_z(z_adv)
+            fl, nt, pred = _asr(v_adv)
             res["autoattack"] = {"flipped": fl, "nontarget": nt, "time_s": time.time() - t0}
+            per_subject["autoattack"] = pred.detach().cpu().tolist()
         except Exception as e:
             print(f"    [AutoAttack] skipped: {e}")
             res["autoattack"] = {"flipped": 0, "nontarget": 0, "time_s": 0.0, "error": str(e)}
 
-    # APGD-CE standalone
-    if cfg.get("run_cw", True):
+    # APGD-CE standalone — UNTARGETED from the true label. torchattacks APGD does not
+    # support targeted mode; on the correctly-classified-Male (binary) set, untargeted
+    # from label==1 is identical to targeted→0, so it is compared on equal footing.
+    # (C&W removed: it is an L2 attack, not projected into the L∞ ε-ball, so it is not
+    # comparable in an ε-indexed L∞ table.)
+    if cfg.get("run_apgd", cfg.get("run_cw", True)):
         try:
             import torchattacks
             t0 = time.time()
-            apgd = torchattacks.APGD(wrapper, norm="Linf", eps=epsilon,
-                                      steps=100, loss="ce")
-            v_adv = apgd(v.clone(), labels.long())
-            fl, nt = _asr(v_adv)
+            apgd = torchattacks.APGD(model_z, norm="Linf", eps=eps_z,
+                                      steps=100, loss="ce")   # normalized [0,1] space
+            z_adv = apgd(to_z(v).clone(), labels.long())      # untargeted from true label
+            v_adv = from_z(z_adv)
+            fl, nt, pred = _asr(v_adv)
             res["apgd_ce"] = {"flipped": fl, "nontarget": nt, "time_s": time.time() - t0}
+            per_subject["apgd_ce"] = pred.detach().cpu().tolist()
         except Exception as e:
             print(f"    [APGD-CE] skipped: {e}")
             res["apgd_ce"] = {"flipped": 0, "nontarget": 0, "time_s": 0.0, "error": str(e)}
 
-        # C&W L2 (Carlini-Wagner — gold-standard L2 attack)
-        try:
-            import torchattacks
-            t0 = time.time()
-            cw = torchattacks.CW(wrapper, c=1, kappa=0, steps=50, lr=0.01)
-            v_adv = cw(v.clone(), labels.long())
-            fl, nt = _asr(v_adv)
-            res["cw_l2"] = {"flipped": fl, "nontarget": nt, "time_s": time.time() - t0}
-        except Exception as e:
-            print(f"    [C&W L2] skipped: {e}")
-            res["cw_l2"] = {"flipped": 0, "nontarget": 0, "time_s": 0.0, "error": str(e)}
-
-    return res
+    return res, per_subject
 
 
 def run_attack_sweep(loader, model, device, epsilons, cfg_attack, out_dir=None):
@@ -309,11 +449,29 @@ def run_attack_sweep(loader, model, device, epsilons, cfg_attack, out_dir=None):
         if torch.cuda.is_available():
             torch.cuda.reset_peak_memory_stats()
 
-        attack_keys = ["newton_cg", "pgd_40", "pgd_500", "autoattack", "apgd_ce", "cw_l2"]
+        # Only include attacks that actually run (a disabled one must not report ASR=0).
+        attack_keys = []
+        if cfg_attack.get("run_kappa_attack", True):
+            attack_keys.append("newton_cg")
+        if cfg_attack.get("run_pgd", True):
+            attack_keys.append("pgd_40")
+        if cfg_attack.get("run_pgd500", True):
+            attack_keys.append("pgd_500")
+        if cfg_attack.get("run_autoattack", True):
+            attack_keys.append("autoattack")
+        if cfg_attack.get("run_apgd", cfg_attack.get("run_cw", True)):
+            attack_keys.append("apgd_ce")
         totals = {k: {"flipped": 0, "nontarget": 0, "time_s": 0.0} for k in attack_keys}
+        # Per-subject predictions accumulated across batches (test loader is shuffle=False,
+        # so subject order is deterministic and consistent across attacks and epsilons).
+        subj = {k: [] for k in (["labels", "pred_clean"] + attack_keys)}
 
-        model.train()  # keep in train mode: cuDNN RNN backward requires it
-        for v, a, t, endpoints, labels in loader:
+        set_attack_mode(model)  # deterministic: eval everywhere, only GRU in train (cuDNN backward)
+        kappa_damping = None     # attack's actual per-step μ_min/λ (first batch, for the JSON)
+        max_batches = cfg_attack.get("max_batches")   # limit batches for a fast GPU quick-test
+        for _bi, (v, a, t, endpoints, labels) in enumerate(loader):
+            if max_batches is not None and _bi >= max_batches:
+                break
             v, a, t  = v.to(device), a.to(device), t.to(device)
             labels   = labels.to(device)
 
@@ -322,15 +480,21 @@ def run_attack_sweep(loader, model, device, epsilons, cfg_attack, out_dir=None):
                 return logits
 
             wrapper = ForwardWrapper(model, a, t, endpoints)
-            # do NOT call wrapper.eval(): model must stay in train() for cuDNN RNN backward
+            # mode already set by set_attack_mode(model): eval + GRU-train (do NOT change it here)
 
-            batch_res = _run_attacks_batch(forward_v, wrapper, v, labels, epsilon, cfg_attack)
+            batch_res, batch_subj = _run_attacks_batch(forward_v, wrapper, v, labels, epsilon, cfg_attack)
+            if kappa_damping is None:
+                kappa_damping = batch_res.get("newton_cg", {}).get("damping")
 
             for atk, counts in batch_res.items():
                 if atk in totals:
                     totals[atk]["flipped"]  += counts["flipped"]
                     totals[atk]["nontarget"]+= counts["nontarget"]
                     totals[atk]["time_s"]   += counts["time_s"]
+
+            for k, arr in batch_subj.items():
+                if k in subj:
+                    subj[k].extend(arr)
 
         eps_entry = {"epsilon": epsilon, "attacks": {}}
         for atk in attack_keys:
@@ -345,6 +509,8 @@ def run_attack_sweep(loader, model, device, epsilons, cfg_attack, out_dir=None):
             print(f"    {atk:<15s}: ASR={asr:.4f}  t={totals[atk]['time_s']:.1f}s")
 
         eps_entry["gpu_memory_mb_peak"] = get_gpu_memory_mb()
+        eps_entry["per_subject"] = subj
+        eps_entry["kappa_damping"] = kappa_damping  # μ_min/λ per outer step (attack's real PD damping)
         epsilon_results.append(eps_entry)
 
         # Save partial results after every epsilon so job failures don't lose prior work
@@ -353,13 +519,18 @@ def run_attack_sweep(loader, model, device, epsilons, cfg_attack, out_dir=None):
                 json.dump({"epsilon_results": epsilon_results}, f, indent=2)
             print(f"    [partial saved → {partial_path}]", flush=True)
 
-    return epsilon_results
+    # Sort by ε so resumed runs (new ε appended out of order) stay monotonic in the JSON.
+    return sorted(epsilon_results, key=lambda e: e["epsilon"])
 
 
 def main():
     args = parse_args()
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
+    # NB: intentionally NOT forcing cudnn.deterministic here — the KAPPA HVP is a double
+    # backward through the cuDNN GRU, and forcing determinism can break it. STAGIN does not
+    # need it: no AutoAttack (no Square/"randomized" check) and the eval+GRU-train mode
+    # already yields a stable pool/denominator.
 
     # Load config YAML (CLI args take precedence over config for explicitly set values)
     cfg_attack    = {}
@@ -388,6 +559,25 @@ def main():
             "run_cw": True,
         }
         print("SMOKE TEST MODE — synthetic data (no HCP files required)\n")
+
+    # --- CLI fan-out overrides: applied LAST so they take precedence over config and smoke ---
+    if args.lambda_reg is not None:
+        cfg_attack["newton_cg_lambda"] = args.lambda_reg
+    if args.damping_mode is not None:
+        cfg_attack["damping_mode"] = args.damping_mode
+    if args.hvp_mode is not None:
+        cfg_attack["hvp_mode"] = args.hvp_mode
+    if args.epsilon is not None:
+        epsilon_sweep = args.epsilon
+    if args.only is not None:
+        sel = {s.strip() for s in args.only.split(",") if s.strip()}
+        cfg_attack["run_kappa_attack"] = "kappa" in sel
+        cfg_attack["run_pgd"]          = "pgd" in sel
+        cfg_attack["run_pgd500"]       = "pgd500" in sel
+        cfg_attack["run_apgd"]         = "apgd" in sel
+        cfg_attack["run_autoattack"]   = ("autoattack" in sel) or ("aa" in sel)
+        # κ estimation is expensive+deterministic → only when KAPPA runs (reuse across jobs).
+        cfg_attack["run_kappa"] = "kappa" in sel
 
     run_id  = args.run_id or time.strftime("%Y%m%d_%H%M%S")
     out_dir = os.path.join(args.output_dir, run_id)
@@ -445,22 +635,60 @@ def main():
                                     target_names=["Female", "Male"], zero_division=0))
         print(confusion_matrix(labels, preds))
 
-    # Condition number estimation
-    print("\nEstimating condition number κ …", flush=True)
-    kappa = float("nan")
-    try:
-        for v, a, t, endpoints, _ in test_loader:
-            v, a, t = v.to(DEVICE), a.to(DEVICE), t.to(DEVICE)
-            kappa = estimate_condition_number(model, v, a, t, endpoints)
-            break
-        print(f"  κ estimate : {kappa:.2f}")
-    except Exception as e:
-        print(f"  κ estimation failed: {e}")
+    # Condition number estimation (rigorous — Lanczos on matrix-free HVP). Skippable
+    # (run_kappa: false) — it's deterministic, so quick-tests can reuse the full run's κ.
+    kappa_info = None
+    lambda_min_stagin = float(cfg_attack.get("newton_cg_lambda", 0.1))
+    if not cfg_attack.get("run_kappa", True):
+        print("\nSkipping κ estimation (run_kappa: false)", flush=True)
+    else:
+        print("\nEstimating condition number κ …", flush=True)
+        try:
+            for v, a, t, endpoints, _ in test_loader:
+                v, a, t = v.to(DEVICE), a.to(DEVICE), t.to(DEVICE)
+                kappa_info = estimate_condition_number(model, v, a, t, endpoints,
+                                                       lambda_min=lambda_min_stagin, seed=args.seed)
+                break
+            if kappa_info and "kappa_H_reg" in kappa_info:
+                kH = kappa_info.get("kappa_H")
+                print(f"  κ(H+λI) : {kappa_info['kappa_H_reg']:.2f}   "
+                      f"κ(H) : {'unbounded (rank-deficient)' if kH is None else f'{kH:.2f}'}   "
+                      f"σ_max : {kappa_info['sigma_max']:.4g}")
+            else:
+                print(f"  κ estimation incomplete: {kappa_info}")
+        except Exception as e:
+            print(f"  κ estimation failed: {e}")
 
     # Adversarial sweep
     print(f"\nAdversarial sweep  ε={epsilon_sweep}")
     atk_results = run_attack_sweep(test_loader, model, DEVICE, epsilon_sweep, cfg_attack,
                                    out_dir=out_dir)
+
+    # Attack hyperparameters, recorded so the exact configuration is reproducible.
+    attack_config = {
+        "threat_model": "L_inf",
+        "input_domain_box": [float(cfg_attack.get("data_min", -1.0)),
+                             float(cfg_attack.get("data_max", 1.0))],
+        "domain_fix_N8": "AutoAttack/APGD run in a [0,1]-normalized space that maps to the "
+                         "valid box; eps rescaled by 1/(dmax-dmin); KAPPA/PGD clamp to the box. "
+                         "Fixes the libraries' hardcoded clamp(0,1) corrupting FC in [-1,1].",
+        "metric": "targeted flip -> class 0 (Female), over correctly-classified Male "
+                  "(label==1 & pred_clean==1); binary => equivalent to untargeted-from-label",
+        "newton_cg_kappa": {"outer_steps_Kncg": cfg_attack.get("newton_cg_outer_steps", 5),
+                             "cg_iters_Mcg": cfg_attack.get("newton_cg_cg_iters", 50),
+                             "lambda_min": lambda_min_stagin,
+                             "lambda_frozen_per_outer_step": True,
+                             "targeted": True},
+        "pgd": {"step_size_rule": "2.5*eps/num_steps", "pgd_40_steps": cfg_attack.get("pgd_steps", 40),
+                "pgd_500_steps": cfg_attack.get("pgd_matched_budget_steps", 500), "targeted": True},
+        "autoattack": {"norm": "Linf", "version": "custom",
+                       "attacks_to_run": ["apgd-ce", "square"], "targeted": False,
+                       "note": "DLR-based targeted variants undefined for 2 classes"},
+        "apgd_ce": {"lib": "torchattacks", "steps": 100, "loss": "ce", "targeted": False,
+                    "note": "torchattacks APGD has no targeted mode; binary => equiv. to targeted->0"},
+        "cw_removed": "C&W is L2, not projected into the L_inf ball => not comparable in an eps-indexed table",
+        "kappa_protocol": (kappa_info or {}).get("protocol"),
+    }
 
     # Save JSON
     output = {
@@ -474,7 +702,9 @@ def main():
             "macro_f1":          round(f1, 6),
             "n_subjects":        len(labels),
         },
-        "condition_number_kappa": None if np.isnan(kappa) else round(kappa, 4),
+        "condition_number": kappa_info,
+        "condition_number_kappa": (kappa_info or {}).get("kappa_H_reg"),  # headline = κ(H+λI), finite
+        "attack_config": attack_config,
         "gpu_memory_mb_peak": get_gpu_memory_mb(),
         "epsilon_results": atk_results,
     }

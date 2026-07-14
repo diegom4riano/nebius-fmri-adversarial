@@ -1,0 +1,16 @@
+# ECG dilated-CNN control experiment (low-κ regime). Metric: untargeted robust-ASR.
+model:
+  num_classes: 4
+
+attack:
+  epsilon_sweep: [2, 10]      # L∞ radius in raw ECG amplitude units
+  batch_size: 16
+  pgd_steps: 40
+  pgd_matched_budget_steps: 500   # matched compute: Kncg×Mcg×2 = 5×50×2 = 500
+  newton_cg_outer_steps: 5        # Kncg
+  newton_cg_cg_iters: 50          # Mcg
+  newton_cg_lambda: 1.0e-6        # λ_min (ECG); STAGIN uses 0.1
+  run_apgd: true
+  run_autoattack: true
+  autoattack_version: standard    # 4 classes → DLR/apgd-t/fab-t valid (untargeted)
+  # data_min / data_max: omitted → computed from the ECG dataset range (documented in JSON)

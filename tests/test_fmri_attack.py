@@ -109,6 +109,8 @@ class TestAttackEffectiveness:
 
     def test_predictions_change(self):
         """At least 25% of predictions should change after attack."""
+        torch.manual_seed(0)   # deterministic: unseeded, the rigorous (heavier) damping made
+                               # the fraction-changed threshold flaky on this tiny random model
         model = TinySTAGIN()
         v, labels, targets = _make_batch(B=16)
         fwd = _forward_v(model, v)

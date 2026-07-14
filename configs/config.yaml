@@ -10,10 +10,24 @@ training:
 
 attack:
   batch_size: 32
-  epsilon_sweep: [0.001, 0.005, 0.01, 0.05, 0.1]
+  epsilon_sweep: [0.0001, 0.0002, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1]
   pgd_steps: 40
   pgd_matched_budget_steps: 500
   newton_cg_outer_steps: 5
   newton_cg_cg_iters: 50
-  run_autoattack: true
-  run_cw: true
+  newton_cg_lambda: 0.1        # λ_min (STAGIN); feeds κ(H+λI)
+  data_min: -1.0               # FC valid box (Pearson correlation)
+  data_max: 1.0
+  hvp_mode: autodiff           # EXACT double-backward HVP (default). Per-step NaN (STAGIN sparse
+                               # ops) now falls back to central-difference FD only for that step,
+                               # logged in info['hvp_fd_fallback'] — validate on GPU which path runs.
+  fd_eps: 1.0e-3               # FD step (central diff, O(h²)); 1e-2 one-sided was ~5x wrong.
+  damping_mode: adaptive_exact # exact HVP + reorthogonalized-Lanczos μ_min → λ=|μ_min|+λ_min (PD).
+                               # Override to 'fixed' (+ newton_cg_lambda=λ) for the damping sweep.
+  # AutoAttack DISABLED for STAGIN: the model is not a pure function of v (needs per-sample
+  # a,t via ForwardWrapper), and AutoAttack's run_standard_evaluation filters to robust-point
+  # SUBSETS between sub-attacks, breaking the v<->(a,t) correspondence (false "randomized
+  # defense" + invalid numbers). APGD-CE (AutoAttack's gradient core) processes the full batch
+  # in fixed order and IS valid. AutoAttack stays enabled for ECG (pure-f(x) CNN).
+  run_autoattack: false
+  run_apgd: true
