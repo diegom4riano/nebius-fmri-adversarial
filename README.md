@@ -18,7 +18,7 @@ The standard robustness toolkit was built for image classifiers. Clinical AI use
 
 **Hypothesis:** KAPPA would add little on the ECG CNN (BatchNorm smooths the loss surface) but expose hidden vulnerability on STAGIN (graph architecture, rank-deficient fMRI inputs). An initial run seemed to confirm it.
 
-**What that rigor produced** is a result worth trusting — and a tool more useful than the attack itself. The geometry profiler predicts attack outcome before a single attack runs. Every input classified as flat-and-silent was 100% robust to every gradient-based attack, across both models, independently. Not approximately. Not on average. 100%, with tight confidence intervals. That is not a consolation prize: it is a cheap, predictive triage tool that tells you — before running anything expensive — which patients need a robustness test and which ones don't.
+**What that rigor produced** a tool more useful than the attack itself. The geometry profiler may indicates attack outcome before a single attack runs. Every input classified as flat-and-silent was 100% robust to every gradient-based attack, across both models, independently. Not approximately. Not on average. 100%, with tight confidence intervals. This is a cheap, predictive triage tool that tells you — before running anything expensive — which patients need a robustness test and which ones don't.
 
 ---
 
@@ -38,7 +38,7 @@ The profiler classifies each input's loss-surface terrain before any attack runs
 ![Geometry routing scatter](figures/geometry_routing_stagin.png)
 ![Robustness by geometry class](figures/geometry_robustness_stagin.png)
 
-The `anisotropic → KAPPA` routing did not activate on either model tested: ECG BatchNorm collapses σ_max to ≈4×10⁻⁵; STAGIN has κ=3.54 (CG residual 0.16–0.22, insufficient for Newton to gain traction). The profiler predicts this before the sweep runs.
+The `anisotropic → KAPPA` routing did not activate on either model tested: ECG BatchNorm collapses σ_max to ≈4×10⁻⁵; STAGIN has κ=3.54 (CG residual 0.16–0.22, insufficient for Newton to gain traction). The profiler indicates this before the sweep runs.
 
 ---
 
@@ -197,11 +197,9 @@ python scripts/geometry_routing.py output/
 |---|---|
 | GPU | H200 SXM — 141 GB HBM3e |
 | Platform | `gpu-h200-sxm` · preset `1gpu-16vcpu-200gb` |
-| Peak VRAM | ~86.9 GB (KAPPA double-backward through GRU) |
-| Sweep runtime | ~2–3h wall-clock (jobs run in parallel) |
-| Total cost | < $100 |
-
-**Why H200?** KAPPA requires double-backward HVPs through STAGIN's GRU. Peak VRAM hits ~87 GB — beyond the H100's 80 GB limit. The H200 (141 GB) is the minimum viable GPU for this experiment.
+| Peak VRAM | ~87 GB (KAPPA double-backward through GRU) |
+| Total Runtime | ~13h wall-clock (sweep jobs run in parallel) |
+| Total cost | ~$100 |
 
 ---
 
@@ -241,7 +239,7 @@ python scripts/geometry_routing.py output/
 
 ---
 
-## Citation
+## Citation and References
 
 KAPPA and Geometry Profiler: *manuscript in preparation*
 
