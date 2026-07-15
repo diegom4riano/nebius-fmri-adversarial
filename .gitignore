@@ -62,7 +62,6 @@ figures/kappa_vs_autoattack_gap.png
 !model/*.py
 !utils/*.py
 !scripts/*.py
-!tests/*.py
 
 # --- Configs needed to run the pipeline ---
 !configs/config.yaml
