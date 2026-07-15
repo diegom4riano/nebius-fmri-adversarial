@@ -79,10 +79,12 @@ Prerequisites for Nebius jobs: Nebius account, nebius CLI, AWS CLI, `.env` fille
 
 ### 0. Setup
 
+Requires Python 3.11+. Local steps (smoke tests, figure generation) run on CPU. Cloud steps require a Nebius account with H200 SXM access.
+
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.template .env   # fill in credentials
+cp .env.template .env   # fill in PARENT_ID, BUCKET_ID, S3_BUCKET, S3_ENDPOINT
 ```
 
 ### 1. Smoke test — local, no GPU, no accounts
@@ -107,6 +109,8 @@ make upload-data-ecg      # ECG waveforms (separate, lighter)
 
 ### 3. STAGIN adversarial attack (KAPPA + baselines)
 
+**Runtime:** ~10h on H200 (5 ε values × all attacks, sequential; dominated by PGD-500 and AutoAttack). **Output:** `output/<run_id>/attack_results.json` — per-subject attack outcomes for all attacks × all ε values.
+
 ```bash
 make deploy-attack        # launch H200 job; results stream to S3
 make logs                 # follow job output live
@@ -119,6 +123,8 @@ make deploy-attack RESUME_RUN_ID=<previous_run_id>
 ```
 
 ### 4. ECG adversarial attack
+
+**Runtime:** ~30 min on H200 (2 ε values × all attacks). **Output:** `output/<run_id>/attack_results_ecg.json`.
 
 ```bash
 make deploy-attack-ecg
@@ -140,6 +146,8 @@ python scripts/hvp_validation.py --smoke-test
 ```
 
 ### 6. Full damping sweep (KAPPA vs baselines across all λ)
+
+**Runtime:** ~2–3h wall-clock (all jobs run in parallel). **Output:** one `output/<run_id>/attack_results.json` per job; `analyze_sweep.py` prints McNemar p-values and Wilson CIs per (λ, ε) to stdout.
 
 ```bash
 make deploy-sweep-dry          # preview: list jobs to submit, no submission
@@ -190,6 +198,7 @@ python scripts/geometry_routing.py output/
 | GPU | H200 SXM — 141 GB HBM3e |
 | Platform | `gpu-h200-sxm` · preset `1gpu-16vcpu-200gb` |
 | Peak VRAM | ~86.9 GB (KAPPA double-backward through GRU) |
+| Sweep runtime | ~2–3h wall-clock (jobs run in parallel) |
 | Total cost | < $100 |
 
 **Why H200?** KAPPA requires double-backward HVPs through STAGIN's GRU. Peak VRAM hits ~87 GB — beyond the H100's 80 GB limit. The H200 (141 GB) is the minimum viable GPU for this experiment.
