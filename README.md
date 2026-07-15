@@ -1,4 +1,4 @@
-# Geometry-Aware Robustness Testing for Clinical AI
+# Can Clinical AI Prove Its Robustness?
 
 > **Nebius Serverless AI Builders Challenge — Healthcare & Life Sciences**
 
