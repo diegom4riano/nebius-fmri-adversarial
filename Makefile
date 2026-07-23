@@ -11,7 +11,8 @@ TRAIN_NAME := fmri-train
 .PHONY: all upload-job-files configure-s3-transfer upload-data upload-data-ecg \
         deploy-attack deploy-attack-ecg deploy-train logs logs-ecg logs-train \
         download-results delete-earliest-run check-env \
-        deploy-sweep deploy-sweep-dry deploy-kappa-validation status logs-job
+        deploy-sweep deploy-sweep-dry deploy-kappa-validation status logs-job \
+        deploy-clinical-bridge
 
 all: check-env upload-job-files deploy-attack
 
@@ -35,6 +36,7 @@ upload-job-files: configure-s3-transfer
 	  --exclude "venv/*" \
 	  --exclude ".claude/*" \
 	  --exclude ".pytest_cache/*" \
+	  --exclude ".mypy_cache/*" \
 	  --exclude "*.egg-info/*" \
 	  --exclude ".DS_Store" \
 	  --exclude "output/*" \
@@ -168,6 +170,21 @@ deploy-kappa-validation: check-env upload-job-files
 	  --args '-c "apt-get update -qq && apt-get install -y git -q && cd /workspace/data && pip install --no-cache-dir -r requirements.txt && python scripts/hvp_validation.py --config configs/config.yaml --n-inputs $(KAPPA_N_INPUTS)"'
 	@echo "κ-validation job submitted. Monitor with: make logs-job JOB=kappa-validation"
 KAPPA_N_INPUTS ?= 8
+
+# Trilha B (ponte clínica): profila TODOS os sujeitos de teste do STAGIN logando a
+# confiança softmax (input do baseline B2b). Saída: output/geometry_stagin_clinical.json
+# no bucket. Double-backward pela GRU exige H200 (Mac dá kernel panic). Ver clinical_bridge_design.md.
+deploy-clinical-bridge: check-env upload-job-files
+	$(NEBIUS) ai job create \
+	  --parent-id $(PARENT_ID) --name clinical-bridge-profile \
+	  --image pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime \
+	  --platform gpu-h200-sxm --preset 1gpu-16vcpu-200gb \
+	  --disk-size 200Gi --shm-size 32Gi \
+	  --volume $(BUCKET_ID):/workspace/data \
+	  --container-command bash \
+	  --args '-c "apt-get update -qq && apt-get install -y git -q && cd /workspace/data && pip install --no-cache-dir -r requirements.txt && python scripts/profile_geometry.py --model stagin --out output/geometry_stagin_clinical.json"'
+	@echo "clinical-bridge job submitted. Monitor: make logs-job JOB=clinical-bridge-profile"
+	@echo "When done: make download-results  ->  output/geometry_stagin_clinical.json"
 
 # Estado de toda a frota (jobs deste parent), com o estado de cada um.
 status:

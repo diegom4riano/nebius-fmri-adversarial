@@ -12,6 +12,8 @@ HCP_S1200_Atlas_Z4_pkXDZ/
 
 # Python artifacts
 __pycache__/
+.mypy_cache/
+.pytest_cache/
 *.pyc
 *.pyo
 *.pyd
@@ -24,11 +26,14 @@ build/
 logs/
 output/
 !output/attack_results.json
+graphify-out/
+paper_export/
 figures/*
 !figures/*.png
 figures/asr_vs_epsilon_kappa.png
 figures/bar_attack_eps001.png
 figures/kappa_vs_autoattack_gap.png
+figures/reviravolta.png
 *.log
 
 # OS
@@ -53,15 +58,23 @@ figures/kappa_vs_autoattack_gap.png
 *.md
 *.txt
 
-# --- Pipeline code (Python) ---
+# --- Pipeline code (Python) — CORE REPRODUCTION ONLY (kappa + profile + sweep) ---
 !hessian.py
 !test_fmri_model.py
 !test_pytorch_model.py
+!test_pathomic_model.py
+!test_pathomic_qp.py
 !train_fmri.py
 !generate_figures.py
 !model/*.py
 !utils/*.py
-!scripts/*.py
+# core scripts only — the analysis & clinical arm in scripts/clinical/ stays ignored
+!scripts/profile_geometry.py
+!scripts/profile_geometry_pathomic.py
+!scripts/geometry_routing.py
+!scripts/paired_stats.py
+!scripts/analyze_sweep.py
+!scripts/hvp_validation.py
 
 # --- Configs needed to run the pipeline ---
 !configs/config.yaml

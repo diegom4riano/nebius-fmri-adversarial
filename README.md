@@ -6,70 +6,68 @@
 
 ---
 
-A hospital is deciding whether to deploy an AI that reads brain scans. A regulator is deciding whether to authorize a cardiac-rhythm classifier. Both decisions increasingly rely on an **adversarial-robustness certificate** — a report that says the model resists small, malicious input changes. That certificate is only as trustworthy as the tool that produced it.
+Before a hospital deploys an AI that reads a brain scan, or a regulator authorizes an ECG
+classifier, someone must certify how robust that model is. A wave of methods proposes using the
+*geometry* of a model's decision surface to do this. **This
+project asks whether that sophisticated geometry actually tells you anything a simple robustness
+check doesn't, on real clinical models and whether the standard tooling, built for photo
+classifiers, even measures clinical models correctly.** Across three clinical AI systems
+(brain-imaging, cardiac-signal, cancer-genomics), the sophisticated geometry adds nothing a simple
+check misses, and the off-the-shelf toolkit can quietly return the wrong answer.
 
-The standard robustness toolkit was built for image classifiers. Clinical AI uses fundamentally different architectures — graph networks for brain connectivity, recurrent networks for physiological time series — with different input constraints and different failure modes. A test designed for vision can silently mis-measure a clinical model in either direction: **false confidence** (a vulnerable model gets a clean bill of health) or a **false alarm** (a safe model looks catastrophically vulnerable). This project ran into both.
+## Contribution
 
-**Three things were built to probe that gap:**
-
-1. **KAPPA** — a curvature-aware second-order attack using Newton-CG steps on Hessian-Vector Products. Model-agnostic; requires only a differentiable PyTorch `forward()`. Implemented in [`hessian.py`](hessian.py).
-2. **An evaluation pipeline on Nebius H200s** — KAPPA + five baselines against two clinical models, with paired statistics and a full damping sweep across KAPPA's key hyperparameter, run as parallel serverless jobs.
-3. **A geometry profiler** — a cheap pre-attack triage tool (~k HVPs per input, single-pass Lanczos) that classifies each input's loss-surface terrain and predicts attack outcome before any attack runs.
-
-**Hypothesis:** KAPPA would add little on the ECG CNN (BatchNorm smooths the loss surface) but expose hidden vulnerability on STAGIN (graph architecture, rank-deficient fMRI inputs). An initial run seemed to confirm it.
-
-**What that rigor produced** a tool more useful than the attack itself. The geometry profiler may indicates attack outcome before a single attack runs. Every input classified as flat-and-silent was 100% robust to every gradient-based attack, across both models, independently. Not approximately. Not on average. 100%, with tight confidence intervals. This is a cheap, predictive triage tool that tells you — before running anything expensive — which patients need a robustness test and which ones don't.
-
----
-
-## Key Finding: Geometry Predicts Vulnerability
-
-The profiler classifies each input's loss-surface terrain before any attack runs. Terrain type predicts robustness reliably:
-
-| Class | Signature | Routed attack | STAGIN robust-rate [Wilson 95%] |
-|---|---|---|---|
-| **flat-masked** | ‖∇‖≈0, σ_max≈0 | skip (or black-box) | **1.00 [0.87, 1.00]** |
-| flat-with-gradient | ‖∇‖>0, σ_max≈0 | PGD/APGD | 0.82 [0.52, 0.95] |
-| isotropic-curved | σ_max high, κ≈1 | PGD large-step | 1.00 [0.44, 1.00] |
-| anisotropic | σ_max high, κ>>1 | KAPPA | 0.62 [0.45, 0.76] |
-
-χ² p=0.020 (STAGIN ε=0.001, n=74 subjects). **ECG ε=2:** flat-masked 1.00 [0.86, 1.00], χ² p=0.0005 — same pattern on an independent dataset.
-
-![Geometry routing scatter](figures/geometry_routing_stagin.png)
-![Robustness by geometry class](figures/geometry_robustness_stagin.png)
-
-The `anisotropic → KAPPA` routing did not activate on either model tested: ECG BatchNorm collapses σ_max to ≈4×10⁻⁵; STAGIN has κ=3.54 (CG residual 0.16–0.22, insufficient for Newton to gain traction). The profiler indicates this before the sweep runs.
-
----
+1. **No hidden vulnerability from "smarter" attacks.** The curvature-aware attack proposed to find
+   weaknesses that simple attacks miss ([`hessian.py`](hessian.py)) was run head-to-head against
+   standard attacks on all three models. It never found a weakness the simple attack missed — on the
+   most curved model it attacked the *exact same patients*. **Practical takeaway: a well-run simple
+   robustness test is sufficient for these clinical models.**
+2. **The standard robustness toolkit misfires on clinical models — a safety issue.** Built for image
+   classifiers, it mis-measures brain-connectivity graph networks and ECG networks in *both*
+   directions: **false confidence** (a fragile model looks safe) and **false alarm** (a safe model
+   looks broken). Certifying clinical AI with vision tools is not safe by default.
+3. **First curvature characterization of real clinical AI** (brain imaging, cardiac signal, cancer
+   genomics), with an actionable engineering finding: **BatchNorm flattens the decision surface** — a
+   model built with it will look "smooth" regardless, which matters when choosing architectures for
+   certifiable clinical AI.
+4. **A cheap pre-screening tool** that flags, before any expensive test, which inputs are trivially
+   robust (100% robust to every attack, both models, tight confidence intervals) — useful in a
+   deployment/monitoring pipeline to skip needless testing. *Honest scope:* the flag recovers a known
+   result (curvature relates to robustness), so it is an operational convenience, not a new predictor.
+5. **A rigorous, reusable evaluation protocol** — the methodological backbone: honest held-out
+   validation that avoids the self-fulfilling comparisons which make geometry claims look better than
+   they are. This is what let the project catch and discard its own initial (wrong) positive result.
 
 ## Models
 
-| Model | Task | Dataset | Architecture | BACC | κ(H+λI@0.1) | σ_max | Geometry class |
-|---|---|---|---|---|---|---|---|
-| **STAGIN** | fMRI sex classification | HCP-Rest S1200, n=1,080 | GIN + Self-Attention + GRU | 77.2% | 3.54 | ~0.133 | anisotropic (moderate κ) |
-| **ECG CNN** | Rhythm classification (4-class) | PhysioNet/CinC 2017 | 13-block dilated 1D CNN + BN | 87.5% | 1.0003 | ~3.8×10⁻⁵ | flat (BatchNorm collapses H) |
+Three clinical models, chosen to span domains, architectures, and decision-surface conditioning:
 
+| Model | Clinical task (data) | Architecture | Accuracy | Decision-surface conditioning |
+|---|---|---|---|---|
+| **STAGIN** | sex from brain fMRI (HCP-Rest S1200, n=1,080) | graph net + attention + GRU | 77.2% BACC | mildly stretched (κ≈3.5) |
+| **ECG CNN** | heart-rhythm, 4-class (PhysioNet/CinC 2017) | dilated 1D-CNN + BatchNorm | 87.5% BACC | flat — BatchNorm smooths it (κ≈1) |
+| **MaxNet** | glioma grade from genomics (TCGA-GBMLGG) | 4-layer network, no BatchNorm | — | strongly ill-conditioned (κ up to ~2260) |
+
+*"Conditioning" (κ) = how stretched/anisotropic the decision surface is — higher is the regime where
+sophisticated second-order geometry* should *help most. Only MaxNet reaches that regime, and even
+there it didn't help.*
+
+## Key results
+
+**The sophisticated attack found nothing extra.** On the brain (STAGIN) and cardiac (ECG) models the
+curvature-aware attack was *weaker* than standard attacks. On the genomics model (MaxNet) — the one in
+the extreme-conditioning regime where it *should* win — a fully corrected version matched the standard
+attack exactly, flipping the identical set of patients. Sophisticated geometry adds no attack power
+for these clinical models.
+
+**The pre-screening tool works — but it only recovers curvature.** Inputs the profiler labels "flat"
+are 100% robust to every attack (both models, tight confidence intervals) — a reliable cheap
+skip-the-test flag. But a rigorous held-out test showed the tool's terrain labels never beat a single
+curvature number — it recovers known theory rather than adding new predictive power.
+
+![Geometry routing](figures/geometry_routing_stagin.png)
+![Robustness by geometry class](figures/geometry_robustness_stagin.png)
 ![σ_max vs κ at common λ](figures/conditioning_sigma_vs_kappa.png)
-
----
-
-## Results
-
-**STAGIN — damping sweep (λ ∈ {0.13…0.50} + adaptive, n≈74 pool subjects):**
-
-| Attack | ε=0.001 | ε=0.01 |
-|---|---|---|
-| KAPPA (best λ) | 4–5% | 49–55% |
-| APGD-CE | **14.9%** | — |
-| PGD-40 | — | **70.3%** |
-
-McNemar paired test: KAPPA < best first-order at all λ, p ≤ 0.001.
-
-**ECG CNN — untargeted robust-ASR:**
-
-![ECG robust-ASR](figures/ecg_robust_asr.png)
-
-KAPPA is the weakest attack at both budgets (12.5% vs PGD-40 24.0% at ε=2).
 
 ---
 
@@ -209,6 +207,8 @@ python scripts/geometry_routing.py output/
 ├── hessian.py              KAPPA + PGD implementations (core, model-agnostic)
 ├── test_fmri_model.py      Full adversarial evaluation sweep (STAGIN)
 ├── test_pytorch_model.py   ECG CNN evaluation
+├── test_pathomic_model.py  MaxNet (genomic SNN) evaluation — the κ≫1 model
+├── test_pathomic_qp.py     L∞ box-QP ablation (second-order steelman: QP == PGD)
 ├── train_fmri.py           STAGIN training (OneCycleLR, early stopping)
 ├── generate_figures.py     Reproduce all result figures
 ├── Makefile                Nebius job orchestration (see targets above)
@@ -221,13 +221,14 @@ python scripts/geometry_routing.py output/
 │   ├── fMRILoader.py       HCP fMRI loader (sliding-window FC matrices)
 │   └── DataLoader.py       ECG loader
 ├── scripts/
-│   ├── profile_geometry.py     Per-subject geometry profiler (‖∇‖, σ_max, κ)
-│   ├── geometry_routing.py     Join geometry↔outcomes, routing figures
-│   ├── paired_stats.py         McNemar + Wilson CI + bootstrap
-│   ├── analyze_sweep.py        Damping sweep analysis (intersection pool)
-│   ├── hvp_validation.py       HVP autodiff vs FD, κ multi-input, PD-check
-│   ├── deploy_sweep.sh         Fan-out: one Nebius job per (λ, ε)
-│   └── monitor_fleet.sh        Poll job states until all terminal
+│   ├── profile_geometry.py           Per-subject geometry profiler (‖∇‖, σ_max, κ)
+│   ├── profile_geometry_pathomic.py  MaxNet geometry profiler
+│   ├── geometry_routing.py           Join geometry↔outcomes, routing figures
+│   ├── paired_stats.py               McNemar + Wilson CI + bootstrap
+│   ├── analyze_sweep.py              Damping sweep analysis (intersection pool)
+│   ├── hvp_validation.py             HVP autodiff vs FD, κ multi-input, PD-check
+│   ├── deploy_sweep.sh               Fan-out: one Nebius job per (λ, ε)
+│   └── monitor_fleet.sh              Poll job states until all terminal
 ├── configs/
 │   ├── config.yaml             Default STAGIN config
 │   ├── config_ecg.yaml         ECG-specific config

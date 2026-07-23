@@ -1,0 +1,770 @@
+TCGA ID,TCGA Dataset,Histology,Grade,Age at diagnosis,Gender,Molecular subtype,Time to last followup or death (months),Vital status,Slide count,Region count
+TCGA-CS-4938,LGG,astrocytoma,2,31,female,IDHmut-non-codel,3574,Alive,1,1
+TCGA-CS-4944,LGG,astrocytoma,2,50,male,IDHmut-non-codel,1828,Alive,1,2
+TCGA-CS-5395,LGG,oligodendroglioma,2,43,male,IDHwt,639,Deceased,1,1
+TCGA-CS-6667,LGG,astrocytoma,2,39,female,IDHmut-non-codel,1469,Alive,1,1
+TCGA-CS-6668,LGG,oligodendroglioma,2,57,female,IDHmut-codel,1519,Alive,1,1
+TCGA-CS-6669,LGG,oligodendroglioma,2,26,female,IDHwt,1494,Alive,1,2
+TCGA-DB-5278,LGG,oligodendroglioma,2,17,male,IDHmut-codel,2772,Alive,2,2
+TCGA-DB-5279,LGG,oligodendroglioma,2,59,male,IDHmut-codel,1354,Alive,2,2
+TCGA-DB-5280,LGG,oligoastrocytoma,2,43,male,IDHmut-non-codel,1112,Alive,2,2
+TCGA-DB-A4X9,LGG,oligoastrocytoma,2,33,female,IDHmut-non-codel,1412,Alive,2,2
+TCGA-DB-A4XA,LGG,oligoastrocytoma,2,30,male,IDHmut-codel,573,Alive,2,3
+TCGA-DB-A4XC,LGG,oligoastrocytoma,2,26,male,IDHmut-non-codel,1421,Alive,2,2
+TCGA-DB-A4XH,LGG,oligoastrocytoma,2,53,female,IDHmut-codel,962,Alive,2,2
+TCGA-DB-A64L,LGG,oligodendroglioma,2,67,female,IDHmut-codel,736,Alive,1,1
+TCGA-DB-A64O,LGG,oligoastrocytoma,2,59,male,IDHwt,775,Deceased,1,1
+TCGA-DB-A64Q,LGG,oligoastrocytoma,2,31,female,IDHmut-codel,182,Alive,1,2
+TCGA-DB-A64R,LGG,oligodendroglioma,2,24,female,IDHmut-codel,955,Alive,1,1
+TCGA-DB-A64S,LGG,oligoastrocytoma,2,20,male,IDHmut-non-codel,835,Alive,1,1
+TCGA-DB-A64U,LGG,oligoastrocytoma,2,38,female,IDHmut-codel,846,Alive,1,1
+TCGA-DB-A64V,LGG,oligodendroglioma,2,54,male,IDHmut-codel,889,Alive,1,2
+TCGA-DB-A75M,LGG,astrocytoma,2,47,male,IDHmut-non-codel,544,Alive,1,2
+TCGA-DB-A75P,LGG,astrocytoma,2,25,female,IDHwt,492,Alive,2,2
+TCGA-DH-A66F,LGG,oligodendroglioma,2,49,male,IDHmut-codel,523,Alive,1,1
+TCGA-DH-A7US,LGG,oligodendroglioma,2,50,male,IDHmut-codel,706,Alive,1,3
+TCGA-DU-5849,LGG,oligodendroglioma,2,48,male,IDHmut-codel,443,Alive,1,1
+TCGA-DU-5853,LGG,oligoastrocytoma,2,29,male,IDHmut-non-codel,407,Alive,1,1
+TCGA-DU-5870,LGG,oligodendroglioma,2,34,female,IDHmut-codel,5546,Alive,1,1
+TCGA-DU-5872,LGG,oligoastrocytoma,2,43,female,IDHmut-non-codel,532,Alive,1,1
+TCGA-DU-5874,LGG,oligodendroglioma,2,62,female,IDHmut-codel,461,Alive,1,1
+TCGA-DU-6395,LGG,oligoastrocytoma,2,31,male,IDHmut-non-codel,1491,Deceased,1,1
+TCGA-DU-6399,LGG,oligodendroglioma,2,54,male,IDHmut-non-codel,2000,Deceased,1,1
+TCGA-DU-6400,LGG,oligodendroglioma,2,66,female,IDHmut-codel,37,Deceased,1,1
+TCGA-DU-6401,LGG,oligodendroglioma,2,31,female,IDHmut-non-codel,2660,Deceased,1,1
+TCGA-DU-6407,LGG,oligodendroglioma,2,35,female,IDHmut-non-codel,2875,Deceased,1,1
+TCGA-DU-7007,LGG,astrocytoma,2,33,male,IDHmut-non-codel,1915,Deceased,1,1
+TCGA-DU-7008,LGG,oligodendroglioma,2,41,female,IDHmut-non-codel,4752,Alive,1,1
+TCGA-DU-7009,LGG,oligodendroglioma,2,32,female,IDHmut-codel,4695,Deceased,1,1
+TCGA-DU-7011,LGG,oligoastrocytoma,2,25,male,IDHmut-non-codel,3200,Deceased,1,1
+TCGA-DU-7014,LGG,oligodendroglioma,2,59,male,NA,3571,Deceased,1,1
+TCGA-DU-7015,LGG,oligodendroglioma,2,41,female,IDHmut-non-codel,2761,Alive,1,2
+TCGA-DU-7294,LGG,oligodendroglioma,2,53,female,IDHmut-codel,2869,Alive,1,2
+TCGA-DU-7301,LGG,oligodendroglioma,2,53,male,IDHmut-non-codel,788,Deceased,1,1
+TCGA-DU-7306,LGG,oligoastrocytoma,2,67,male,IDHmut-non-codel,1277,Alive,1,1
+TCGA-DU-8164,LGG,oligodendroglioma,2,51,male,IDHmut-codel,651,Alive,1,2
+TCGA-DU-8166,LGG,oligoastrocytoma,2,29,female,IDHmut-non-codel,516,Alive,1,1
+TCGA-DU-8167,LGG,oligoastrocytoma,2,69,female,IDHmut-non-codel,471,Alive,1,3
+TCGA-EZ-7264,LGG,oligodendroglioma,2,47,female,IDHmut-codel,1201,Alive,1,2
+TCGA-F6-A8O3,LGG,oligodendroglioma,2,34,male,IDHmut-codel,7,Alive,1,1
+TCGA-F6-A8O4,LGG,astrocytoma,2,44,male,IDHmut-non-codel,6,Alive,1,1
+TCGA-FG-5964,LGG,oligodendroglioma,2,62,male,IDHmut-codel,1588,Alive,1,3
+TCGA-FG-5965,LGG,oligoastrocytoma,2,39,female,IDHmut-non-codel,1120,Deceased,1,1
+TCGA-FG-6689,LGG,astrocytoma,2,30,male,IDHmut-non-codel,454,Alive,1,1
+TCGA-FG-6690,LGG,oligodendroglioma,2,70,male,IDHmut-non-codel,1294,Alive,1,1
+TCGA-FG-6691,LGG,astrocytoma,2,23,female,IDHmut-non-codel,1257,Alive,1,1
+TCGA-FG-7634,LGG,oligodendroglioma,2,28,male,IDHmut-codel,467,Alive,1,1
+TCGA-FG-7637,LGG,oligoastrocytoma,2,49,male,IDHmut-non-codel,1219,Alive,1,2
+TCGA-FG-7641,LGG,oligodendroglioma,2,31,male,IDHmut-codel,627,Alive,1,1
+TCGA-FG-7643,LGG,oligoastrocytoma,2,49,female,IDHwt,611,Alive,1,1
+TCGA-FG-8182,LGG,oligodendroglioma,2,35,male,IDHmut-non-codel,416,Alive,1,1
+TCGA-FG-8187,LGG,oligoastrocytoma,2,31,male,IDHmut-codel,611,Alive,2,2
+TCGA-FG-8188,LGG,oligoastrocytoma,2,41,male,IDHmut-non-codel,455,Alive,3,3
+TCGA-FG-8189,LGG,oligodendroglioma,2,33,female,IDHmut-non-codel,685,Alive,1,2
+TCGA-FG-A4MT,LGG,oligodendroglioma,2,27,female,IDHmut-non-codel,1164,Alive,6,7
+TCGA-FG-A4MX,LGG,astrocytoma,2,47,male,IDHmut-non-codel,569,Alive,1,1
+TCGA-FG-A4MY,LGG,oligoastrocytoma,2,44,female,IDHmut-non-codel,721,Alive,1,1
+TCGA-FG-A60J,LGG,oligoastrocytoma,2,47,female,IDHmut-non-codel,449,Alive,1,1
+TCGA-FG-A60K,LGG,oligoastrocytoma,2,34,female,IDHmut-codel,542,Alive,2,3
+TCGA-FG-A60L,LGG,astrocytoma,2,34,female,IDHmut-non-codel,655,Alive,1,2
+TCGA-FG-A6IZ,LGG,oligodendroglioma,2,60,male,IDHmut-codel,457,Alive,1,1
+TCGA-FG-A6J1,LGG,oligodendroglioma,2,44,female,IDHmut-codel,500,Alive,1,3
+TCGA-FG-A70Y,LGG,oligodendroglioma,2,20,female,IDHmut-non-codel,868,Alive,1,2
+TCGA-FG-A711,LGG,oligodendroglioma,2,33,female,IDHmut-non-codel,1481,Deceased,1,1
+TCGA-FG-A713,LGG,oligoastrocytoma,2,74,female,IDHmut-codel,622,Alive,2,3
+TCGA-HT-7467,LGG,oligodendroglioma,2,54,male,IDHmut-codel,3,Alive,4,4
+TCGA-HT-7473,LGG,oligoastrocytoma,2,28,male,IDHmut-non-codel,503,Alive,3,3
+TCGA-HT-7474,LGG,oligoastrocytoma,2,52,male,IDHmut-non-codel,114,Alive,1,2
+TCGA-HT-7476,LGG,astrocytoma,2,26,male,IDHmut-non-codel,199,Alive,1,1
+TCGA-HT-7478,LGG,astrocytoma,2,36,male,IDHmut-non-codel,194,Alive,1,1
+TCGA-HT-7480,LGG,oligodendroglioma,2,33,male,IDHmut-codel,2287,Alive,5,6
+TCGA-HT-7481,LGG,oligodendroglioma,2,39,male,IDHmut-codel,2918,Alive,3,5
+TCGA-HT-7482,LGG,oligoastrocytoma,2,18,female,IDHmut-non-codel,3253,Alive,6,7
+TCGA-HT-7483,LGG,oligoastrocytoma,2,14,male,IDHmut-non-codel,5255,Alive,1,2
+TCGA-HT-7485,LGG,astrocytoma,2,42,male,IDHmut-non-codel,122,Alive,1,1
+TCGA-HT-7602,LGG,oligodendroglioma,2,21,male,IDHmut-non-codel,908,Alive,3,4
+TCGA-HT-7603,LGG,oligodendroglioma,2,29,male,IDHmut-non-codel,705,Alive,2,3
+TCGA-HT-7604,LGG,astrocytoma,2,50,male,IDHmut-non-codel,3725,Alive,1,2
+TCGA-HT-7605,LGG,oligodendroglioma,2,38,male,IDHmut-codel,139,Alive,4,5
+TCGA-HT-7606,LGG,astrocytoma,2,30,female,IDHmut-non-codel,526,Alive,2,3
+TCGA-HT-7607,LGG,astrocytoma,2,61,female,IDHmut-codel,96,Deceased,7,11
+TCGA-HT-7608,LGG,oligoastrocytoma,2,61,male,IDHmut-codel,671,Alive,7,8
+TCGA-HT-7610,LGG,oligoastrocytoma,2,25,female,IDHmut-non-codel,1706,Alive,3,4
+TCGA-HT-7611,LGG,oligoastrocytoma,2,36,male,IDHmut-non-codel,1752,Alive,1,1
+TCGA-HT-7676,LGG,oligodendroglioma,2,26,male,IDHmut-non-codel,5,Alive,1,2
+TCGA-HT-7680,LGG,astrocytoma,2,32,female,IDHwt,23,Alive,3,5
+TCGA-HT-7681,LGG,oligoastrocytoma,2,29,female,IDHmut-codel,1359,Alive,2,3
+TCGA-HT-7689,LGG,oligodendroglioma,2,58,female,IDHmut-non-codel,455,Alive,2,3
+TCGA-HT-7692,LGG,oligoastrocytoma,2,43,male,IDHmut-codel,90,Alive,1,1
+TCGA-HT-7693,LGG,oligodendroglioma,2,51,female,IDHmut-non-codel,533,Alive,1,1
+TCGA-HT-7695,LGG,oligodendroglioma,2,29,female,IDHmut-codel,442,Alive,2,3
+TCGA-HT-7854,LGG,astrocytoma,2,62,male,IDHwt,1201,Alive,2,3
+TCGA-HT-7858,LGG,astrocytoma,2,28,male,IDHmut-non-codel,1540,Alive,4,4
+TCGA-HT-7873,LGG,oligoastrocytoma,2,29,male,IDHmut-non-codel,718,Alive,1,1
+TCGA-HT-7875,LGG,oligodendroglioma,2,56,male,IDHmut-codel,10,Alive,2,2
+TCGA-HT-7877,LGG,oligodendroglioma,2,20,female,IDHmut-codel,4,Alive,5,6
+TCGA-HT-7880,LGG,oligoastrocytoma,2,30,male,IDHmut-non-codel,162,Alive,2,3
+TCGA-HT-7881,LGG,oligodendroglioma,2,38,male,IDHmut-codel,1079,Alive,5,5
+TCGA-HT-7884,LGG,astrocytoma,2,44,female,IDHmut-non-codel,343,Alive,1,2
+TCGA-HT-7902,LGG,oligoastrocytoma,2,30,female,IDHmut-non-codel,956,Alive,2,2
+TCGA-HT-8010,LGG,oligodendroglioma,2,64,female,IDHmut-codel,50,Alive,1,1
+TCGA-HT-8012,LGG,oligodendroglioma,2,30,female,IDHmut-codel,286,Alive,1,1
+TCGA-HT-8013,LGG,oligoastrocytoma,2,37,female,IDHmut-non-codel,1933,Deceased,1,1
+TCGA-HT-8015,LGG,astrocytoma,2,21,male,IDHwt,3,Alive,1,1
+TCGA-HT-8018,LGG,oligoastrocytoma,2,40,female,IDHmut-non-codel,1152,Deceased,1,1
+TCGA-HT-8107,LGG,oligodendroglioma,2,62,male,IDHwt,14,Alive,1,1
+TCGA-HT-8108,LGG,oligodendroglioma,2,26,female,IDHmut-non-codel,76,Alive,1,2
+TCGA-HT-8113,LGG,oligodendroglioma,2,49,female,IDHmut-non-codel,900,Alive,1,1
+TCGA-HT-8558,LGG,oligodendroglioma,2,29,female,IDHwt,418,Alive,1,1
+TCGA-HT-A5R5,LGG,oligodendroglioma,2,33,female,IDHmut-non-codel,4,Alive,1,1
+TCGA-HT-A5RB,LGG,astrocytoma,2,24,male,IDHmut-non-codel,3,Alive,1,1
+TCGA-HT-A614,LGG,oligoastrocytoma,2,47,male,IDHmut-non-codel,82,Alive,1,1
+TCGA-HT-A615,LGG,oligodendroglioma,2,38,female,IDHmut-codel,515,Alive,1,1
+TCGA-HT-A616,LGG,astrocytoma,2,36,female,IDHmut-non-codel,55,Alive,1,1
+TCGA-HT-A617,LGG,oligodendroglioma,2,47,male,IDHwt,491,Alive,1,2
+TCGA-HT-A61A,LGG,oligodendroglioma,2,20,female,IDHmut-non-codel,194,Alive,1,2
+TCGA-HT-A74J,LGG,oligoastrocytoma,2,33,male,IDHmut-non-codel,320,Alive,1,1
+TCGA-HW-7487,LGG,oligodendroglioma,2,39,male,IDHmut-codel,1382,Alive,1,1
+TCGA-HW-7489,LGG,oligoastrocytoma,2,38,male,IDHmut-non-codel,1262,Deceased,1,2
+TCGA-HW-7490,LGG,astrocytoma,2,41,male,IDHmut-non-codel,1387,Alive,1,1
+TCGA-HW-7491,LGG,oligodendroglioma,2,35,male,IDHmut-codel,2078,Alive,1,2
+TCGA-HW-7493,LGG,astrocytoma,2,40,female,NA,2107,Alive,1,2
+TCGA-HW-7495,LGG,oligodendroglioma,2,45,female,IDHmut-codel,1078,Alive,1,1
+TCGA-HW-8322,LGG,oligodendroglioma,2,39,male,IDHmut-codel,758,Alive,1,2
+TCGA-HW-A5KL,LGG,astrocytoma,2,42,female,IDHmut-non-codel,878,Alive,1,2
+TCGA-HW-A5KM,LGG,astrocytoma,2,35,male,IDHmut-non-codel,630,Alive,1,2
+TCGA-IK-7675,LGG,oligodendroglioma,2,43,male,IDHmut-non-codel,578,Deceased,1,2
+TCGA-QH-A65S,LGG,oligoastrocytoma,2,32,female,IDHmut-non-codel,77,Alive,1,1
+TCGA-QH-A65V,LGG,oligodendroglioma,2,43,female,IDHmut-codel,384,Alive,1,1
+TCGA-QH-A65Z,LGG,oligodendroglioma,2,54,male,IDHmut-codel,427,Alive,1,2
+TCGA-QH-A6CX,LGG,astrocytoma,2,66,male,IDHwt,372,Deceased,1,1
+TCGA-QH-A6CZ,LGG,oligoastrocytoma,2,38,male,IDHmut-codel,279,Alive,1,1
+TCGA-QH-A6X3,LGG,oligoastrocytoma,2,27,male,IDHmut-non-codel,313,Alive,1,1
+TCGA-QH-A6X5,LGG,oligoastrocytoma,2,58,female,IDHmut-codel,497,Alive,1,1
+TCGA-QH-A6X9,LGG,oligodendroglioma,2,73,female,IDHmut-non-codel,58,Alive,1,1
+TCGA-QH-A6XA,LGG,oligoastrocytoma,2,23,female,IDHmut-non-codel,502,Alive,1,1
+TCGA-R8-A6MK,LGG,oligodendroglioma,2,40,male,IDHmut-codel,2702,Alive,15,16
+TCGA-R8-A6MO,LGG,oligodendroglioma,2,53,female,IDHmut-codel,993,Alive,14,16
+TCGA-S9-A6TU,LGG,astrocytoma,2,38,male,IDHmut-non-codel,2650,Alive,1,1
+TCGA-S9-A6TY,LGG,oligodendroglioma,2,50,male,IDHmut-codel,1076,Alive,1,3
+TCGA-S9-A6TZ,LGG,astrocytoma,2,39,female,IDHmut-non-codel,1120,Alive,1,1
+TCGA-S9-A6U2,LGG,oligodendroglioma,2,48,female,IDHmut-codel,908,Alive,1,1
+TCGA-S9-A6U5,LGG,astrocytoma,2,33,male,IDHmut-codel,992,Alive,1,2
+TCGA-S9-A6U8,LGG,astrocytoma,2,24,male,IDHmut-non-codel,2988,Deceased,1,1
+TCGA-S9-A6UB,LGG,oligodendroglioma,2,52,male,IDHmut-codel,3761,Alive,1,2
+TCGA-S9-A6WE,LGG,oligodendroglioma,2,34,male,IDHmut-codel,4113,Alive,1,1
+TCGA-S9-A6WH,LGG,oligoastrocytoma,2,73,female,IDHmut-codel,1173,Alive,1,3
+TCGA-S9-A6WI,LGG,oligoastrocytoma,2,56,female,IDHmut-non-codel,2585,Alive,1,1
+TCGA-S9-A6WO,LGG,astrocytoma,2,29,male,IDHmut-non-codel,566,Alive,1,1
+TCGA-S9-A6WQ,LGG,oligoastrocytoma,2,57,female,IDHmut-non-codel,428,Alive,1,1
+TCGA-S9-A7IQ,LGG,oligoastrocytoma,2,45,female,IDHmut-codel,1099,Alive,1,1
+TCGA-S9-A7J1,LGG,oligodendroglioma,2,43,male,IDHmut-codel,249,Alive,1,2
+TCGA-S9-A7QY,LGG,oligoastrocytoma,2,35,female,IDHmut-codel,863,Alive,1,1
+TCGA-S9-A7QZ,LGG,oligodendroglioma,2,41,male,IDHmut-codel,826,Alive,1,1
+TCGA-S9-A7R1,LGG,oligodendroglioma,2,35,male,IDHmut-codel,5166,Deceased,1,1
+TCGA-S9-A7R3,LGG,astrocytoma,2,28,female,IDHmut-non-codel,3013,Alive,1,2
+TCGA-S9-A7R7,LGG,astrocytoma,2,27,male,IDHmut-non-codel,3000,Alive,1,1
+TCGA-TM-A7C4,LGG,astrocytoma,2,39,female,IDHmut-non-codel,1470,Alive,1,1
+TCGA-TM-A7C5,LGG,oligoastrocytoma,2,30,male,IDHmut-codel,1500,Alive,1,1
+TCGA-TM-A7CA,LGG,astrocytoma,2,44,male,IDHmut-non-codel,1058,Alive,1,2
+TCGA-TM-A7CF,LGG,astrocytoma,2,41,female,IDHmut-non-codel,1989,Alive,3,4
+TCGA-TM-A84C,LGG,astrocytoma,2,32,male,IDHwt,492,Deceased,1,1
+TCGA-TM-A84L,LGG,oligoastrocytoma,2,31,male,IDHmut-non-codel,1242,Deceased,1,1
+TCGA-TM-A84Q,LGG,astrocytoma,2,31,male,IDHmut-non-codel,772,Alive,1,1
+TCGA-TM-A84R,LGG,oligodendroglioma,2,46,male,IDHmut-codel,566,Alive,1,1
+TCGA-TM-A84T,LGG,oligoastrocytoma,2,19,male,IDHmut-non-codel,724,Alive,1,1
+TCGA-VM-A8C8,LGG,oligodendroglioma,2,50,female,IDHmut-non-codel,1397,Alive,9,9
+TCGA-VM-A8C9,LGG,astrocytoma,2,37,female,IDHwt,1314,Alive,9,10
+TCGA-VM-A8CA,LGG,oligodendroglioma,2,54,male,IDHmut-non-codel,411,Alive,9,9
+TCGA-VM-A8CE,LGG,oligodendroglioma,2,25,male,IDHmut-codel,1191,Alive,6,6
+TCGA-VM-A8CH,LGG,astrocytoma,2,24,female,IDHmut-non-codel,714,Alive,7,7
+TCGA-W9-A837,LGG,oligodendroglioma,2,47,male,IDHmut-codel,1553,Alive,1,1
+TCGA-WH-A86K,LGG,astrocytoma,2,65,male,IDHmut-non-codel,405,Alive,1,1
+TCGA-CS-4941,LGG,astrocytoma,3,67,male,IDHwt,234,Deceased,1,1
+TCGA-CS-4942,LGG,astrocytoma,3,44,female,IDHmut-non-codel,1335,Deceased,1,1
+TCGA-CS-4943,LGG,astrocytoma,3,37,male,IDHmut-non-codel,1106,Deceased,1,1
+TCGA-CS-5393,LGG,astrocytoma,3,39,male,IDHmut-non-codel,1222,Alive,1,1
+TCGA-CS-5394,LGG,astrocytoma,3,40,male,IDHmut-non-codel,8,Alive,1,1
+TCGA-CS-5396,LGG,oligodendroglioma,3,53,female,IDHmut-codel,1631,Alive,1,1
+TCGA-CS-5397,LGG,astrocytoma,3,54,female,IDHwt,194,Deceased,1,1
+TCGA-CS-6186,LGG,oligoastrocytoma,3,58,male,IDHwt,538,Deceased,1,1
+TCGA-CS-6188,LGG,astrocytoma,3,48,male,IDHwt,814,Deceased,1,3
+TCGA-CS-6290,LGG,astrocytoma,3,31,male,IDHmut-non-codel,1137,Deceased,1,1
+TCGA-CS-6665,LGG,astrocytoma,3,51,female,IDHmut-non-codel,1568,Alive,1,2
+TCGA-CS-6666,LGG,astrocytoma,3,22,male,IDHmut-non-codel,1428,Alive,1,2
+TCGA-CS-6670,LGG,oligodendroglioma,3,43,male,IDHmut-codel,1426,Alive,1,3
+TCGA-DB-5270,LGG,oligoastrocytoma,3,38,female,IDHmut-non-codel,3733,Alive,2,2
+TCGA-DB-5273,LGG,astrocytoma,3,33,male,IDHmut-non-codel,2493,Alive,2,2
+TCGA-DB-5274,LGG,oligoastrocytoma,3,37,female,IDHmut-codel,2289,Alive,2,4
+TCGA-DB-5275,LGG,oligoastrocytoma,3,36,male,IDHmut-non-codel,1458,Alive,2,2
+TCGA-DB-5276,LGG,oligoastrocytoma,3,32,male,IDHmut-non-codel,2218,Alive,2,3
+TCGA-DB-5277,LGG,astrocytoma,3,34,male,IDHmut-non-codel,1547,Deceased,2,3
+TCGA-DB-5281,LGG,oligoastrocytoma,3,61,male,IDHmut-non-codel,2381,Alive,2,2
+TCGA-DB-A4XB,LGG,astrocytoma,3,38,male,IDHmut-non-codel,919,Alive,2,2
+TCGA-DB-A4XD,LGG,astrocytoma,3,32,male,IDHmut-non-codel,1210,Alive,1,2
+TCGA-DB-A4XE,LGG,oligoastrocytoma,3,27,female,IDHmut-non-codel,1139,Alive,2,4
+TCGA-DB-A4XF,LGG,astrocytoma,3,41,female,IDHmut-non-codel,1021,Alive,2,2
+TCGA-DB-A4XG,LGG,oligodendroglioma,3,34,male,IDHmut-codel,2219,Alive,1,3
+TCGA-DB-A64P,LGG,oligodendroglioma,3,40,male,IDHmut-codel,916,Alive,1,1
+TCGA-DB-A64W,LGG,oligoastrocytoma,3,65,female,IDHmut-codel,438,Deceased,1,1
+TCGA-DB-A64X,LGG,astrocytoma,3,56,female,IDHmut-non-codel,563,Alive,1,2
+TCGA-DB-A75K,LGG,oligoastrocytoma,3,55,female,IDHmut-codel,368,Alive,2,2
+TCGA-DB-A75L,LGG,astrocytoma,3,36,female,IDHmut-non-codel,342,Alive,2,2
+TCGA-DB-A75O,LGG,astrocytoma,3,29,male,IDHmut-non-codel,935,Alive,1,1
+TCGA-DH-5140,LGG,oligoastrocytoma,3,38,female,IDHwt,607,Deceased,1,1
+TCGA-DH-5141,LGG,oligodendroglioma,3,32,male,IDHmut-codel,968,Alive,1,1
+TCGA-DH-5142,LGG,astrocytoma,3,29,male,IDHmut-non-codel,1943,Alive,1,3
+TCGA-DH-5143,LGG,oligoastrocytoma,3,30,male,IDHmut-non-codel,1401,Alive,1,2
+TCGA-DH-5144,LGG,oligodendroglioma,3,56,female,IDHmut-codel,748,Alive,1,1
+TCGA-DH-A669,LGG,oligodendroglioma,3,70,male,IDHmut-codel,919,Deceased,1,2
+TCGA-DH-A66B,LGG,astrocytoma,3,52,male,IDHmut-non-codel,1279,Alive,1,1
+TCGA-DH-A66D,LGG,astrocytoma,3,43,female,IDHmut-non-codel,846,Alive,1,2
+TCGA-DH-A66G,LGG,oligodendroglioma,3,49,female,IDHmut-non-codel,523,Alive,1,2
+TCGA-DH-A7UR,LGG,oligodendroglioma,3,59,female,IDHmut-codel,1650,Alive,1,2
+TCGA-DH-A7UT,LGG,astrocytoma,3,30,male,IDHmut-non-codel,531,Deceased,1,1
+TCGA-DH-A7UU,LGG,astrocytoma,3,43,male,IDHmut-non-codel,417,Alive,1,2
+TCGA-DH-A7UV,LGG,astrocytoma,3,49,male,IDHmut-non-codel,566,Alive,1,2
+TCGA-DU-5847,LGG,astrocytoma,3,34,female,IDHwt,548,Alive,1,1
+TCGA-DU-5851,LGG,oligoastrocytoma,3,40,female,IDHmut-non-codel,531,Alive,1,1
+TCGA-DU-5852,LGG,oligoastrocytoma,3,61,female,IDHwt,205,Deceased,1,1
+TCGA-DU-5854,LGG,astrocytoma,3,57,female,IDHwt,257,Alive,1,1
+TCGA-DU-5855,LGG,oligoastrocytoma,3,49,female,IDHmut-non-codel,207,Alive,1,1
+TCGA-DU-6392,LGG,astrocytoma,3,35,female,IDHwt,6423,Alive,1,1
+TCGA-DU-6393,LGG,oligodendroglioma,3,66,male,IDHmut-codel,1585,Deceased,1,2
+TCGA-DU-6394,LGG,oligodendroglioma,3,53,male,IDHmut-codel,682,Deceased,1,1
+TCGA-DU-6396,LGG,oligoastrocytoma,3,31,female,IDHmut-non-codel,2286,Deceased,1,1
+TCGA-DU-6397,LGG,oligodendroglioma,3,45,male,IDHmut-codel,1401,Deceased,1,1
+TCGA-DU-6402,LGG,astrocytoma,3,52,male,IDHwt,214,Deceased,1,1
+TCGA-DU-6403,LGG,oligoastrocytoma,3,60,female,IDHwt,354,Deceased,1,2
+TCGA-DU-6404,LGG,oligodendroglioma,3,24,female,IDHwt,4068,Deceased,1,1
+TCGA-DU-6405,LGG,astrocytoma,3,51,female,IDHwt,605,Deceased,1,1
+TCGA-DU-6406,LGG,oligoastrocytoma,3,59,female,IDHwt,512,Deceased,1,1
+TCGA-DU-6408,LGG,oligodendroglioma,3,23,female,IDHmut-non-codel,3470,Deceased,1,1
+TCGA-DU-6410,LGG,oligodendroglioma,3,56,male,IDHmut-codel,242,Alive,1,1
+TCGA-DU-6542,LGG,oligoastrocytoma,3,25,male,IDHmut-non-codel,73,Alive,1,1
+TCGA-DU-7006,LGG,astrocytoma,3,60,female,IDHwt,349,Deceased,1,1
+TCGA-DU-7010,LGG,astrocytoma,3,58,female,IDHmut-non-codel,456,Deceased,1,2
+TCGA-DU-7012,LGG,astrocytoma,3,74,female,IDHwt,199,Deceased,1,2
+TCGA-DU-7013,LGG,astrocytoma,3,59,male,IDHwt,269,Deceased,1,1
+TCGA-DU-7018,LGG,oligodendroglioma,3,57,female,IDHmut-codel,933,Deceased,1,1
+TCGA-DU-7019,LGG,oligoastrocytoma,3,39,male,IDHmut-non-codel,800,Alive,1,1
+TCGA-DU-7290,LGG,astrocytoma,3,45,female,IDHwt,315,Deceased,1,1
+TCGA-DU-7292,LGG,astrocytoma,3,69,male,IDHwt,242,Deceased,1,1
+TCGA-DU-7298,LGG,astrocytoma,3,38,female,IDHmut-non-codel,576,Deceased,1,2
+TCGA-DU-7299,LGG,astrocytoma,3,33,male,IDHmut-non-codel,1339,Deceased,1,1
+TCGA-DU-7300,LGG,oligodendroglioma,3,53,female,IDHmut-codel,1886,Deceased,1,1
+TCGA-DU-7302,LGG,oligodendroglioma,3,48,female,IDHmut-codel,1834,Alive,1,2
+TCGA-DU-7304,LGG,oligoastrocytoma,3,43,male,IDHmut-non-codel,709,Deceased,1,1
+TCGA-DU-7309,LGG,oligodendroglioma,3,41,female,IDHmut-non-codel,84,Alive,1,2
+TCGA-DU-8158,LGG,astrocytoma,3,57,female,IDHwt,155,Deceased,1,1
+TCGA-DU-8161,LGG,oligoastrocytoma,3,63,female,IDHwt,722,Deceased,1,1
+TCGA-DU-8162,LGG,oligoastrocytoma,3,61,female,IDHwt,444,Deceased,1,2
+TCGA-DU-8163,LGG,oligoastrocytoma,3,29,male,IDHmut-non-codel,629,Alive,1,1
+TCGA-DU-8165,LGG,oligodendroglioma,3,60,female,IDHwt,582,Alive,1,2
+TCGA-DU-8168,LGG,oligodendroglioma,3,55,female,IDHmut-codel,431,Alive,1,3
+TCGA-FG-5962,LGG,oligodendroglioma,3,54,male,IDHmut-codel,1453,Alive,1,2
+TCGA-FG-5963,LGG,astrocytoma,3,23,male,IDHwt,775,Deceased,1,1
+TCGA-FG-6688,LGG,astrocytoma,3,59,female,IDHwt,571,Alive,1,1
+TCGA-FG-6692,LGG,oligodendroglioma,3,63,male,IDHwt,561,Deceased,1,1
+TCGA-FG-7636,LGG,astrocytoma,3,48,male,IDHmut-non-codel,544,Alive,1,1
+TCGA-FG-7638,LGG,oligodendroglioma,3,31,female,IDHmut-codel,686,Alive,1,1
+TCGA-FG-8181,LGG,oligoastrocytoma,3,23,male,IDHwt,862,Alive,1,1
+TCGA-FG-8185,LGG,astrocytoma,3,37,male,IDHmut-non-codel,433,Alive,1,1
+TCGA-FG-8186,LGG,oligoastrocytoma,3,42,female,IDHmut-codel,487,Alive,1,1
+TCGA-FG-8191,LGG,oligodendroglioma,3,30,male,IDHmut-non-codel,992,Alive,1,2
+TCGA-FG-A4MU,LGG,oligoastrocytoma,3,58,male,IDHwt,326,Alive,1,3
+TCGA-FG-A4MW,LGG,oligoastrocytoma,3,63,male,IDHwt,559,Deceased,2,3
+TCGA-FG-A6J3,LGG,astrocytoma,3,52,female,IDHmut-non-codel,677,Alive,3,3
+TCGA-FG-A87N,LGG,astrocytoma,3,37,female,IDHmut-non-codel,567,Alive,1,1
+TCGA-FG-A87Q,LGG,astrocytoma,3,61,female,IDHwt,174,Alive,3,4
+TCGA-FN-7833,LGG,oligoastrocytoma,3,25,male,IDHmut-non-codel,837,Alive,1,2
+TCGA-HT-7468,LGG,oligodendroglioma,3,30,male,IDHmut-codel,203,Alive,6,7
+TCGA-HT-7469,LGG,oligodendroglioma,3,30,male,IDHwt,351,Deceased,1,3
+TCGA-HT-7470,LGG,oligodendroglioma,3,37,male,IDHmut-non-codel,1220,Deceased,8,9
+TCGA-HT-7471,LGG,oligodendroglioma,3,37,female,IDHmut-codel,4,Alive,3,3
+TCGA-HT-7475,LGG,oligoastrocytoma,3,67,male,IDHmut-non-codel,530,Alive,2,3
+TCGA-HT-7477,LGG,astrocytoma,3,62,male,IDHmut-non-codel,738,Alive,1,2
+TCGA-HT-7479,LGG,astrocytoma,3,44,male,IDHmut-non-codel,1227,Alive,2,3
+TCGA-HT-7601,LGG,astrocytoma,3,30,female,IDHmut-non-codel,153,Alive,5,6
+TCGA-HT-7609,LGG,oligoastrocytoma,3,34,male,IDHmut-non-codel,1399,Alive,5,8
+TCGA-HT-7616,LGG,oligodendroglioma,3,75,male,IDHmut-codel,7,Deceased,2,2
+TCGA-HT-7620,LGG,oligodendroglioma,3,40,male,IDHmut-codel,434,Alive,5,6
+TCGA-HT-7677,LGG,oligodendroglioma,3,53,male,IDHmut-codel,494,Alive,7,11
+TCGA-HT-7684,LGG,oligoastrocytoma,3,58,male,IDHmut-non-codel,184,Alive,5,8
+TCGA-HT-7686,LGG,astrocytoma,3,29,female,IDHmut-non-codel,1300,Alive,3,4
+TCGA-HT-7687,LGG,oligodendroglioma,3,74,male,IDHmut-codel,3,Alive,1,1
+TCGA-HT-7688,LGG,oligodendroglioma,3,59,male,IDHmut-non-codel,964,Alive,7,9
+TCGA-HT-7690,LGG,oligoastrocytoma,3,29,male,IDHmut-non-codel,3,Alive,3,5
+TCGA-HT-7694,LGG,oligodendroglioma,3,60,male,IDHmut-codel,210,Alive,6,8
+TCGA-HT-7855,LGG,astrocytoma,3,39,male,IDHmut-non-codel,585,Alive,1,2
+TCGA-HT-7856,LGG,oligodendroglioma,3,35,male,IDHmut-codel,1189,Alive,7,11
+TCGA-HT-7857,LGG,astrocytoma,3,24,female,IDHwt,7,Alive,1,2
+TCGA-HT-7860,LGG,astrocytoma,3,60,female,IDHwt,15,Alive,3,5
+TCGA-HT-7874,LGG,oligodendroglioma,3,41,female,IDHmut-codel,1130,Alive,2,3
+TCGA-HT-7879,LGG,oligoastrocytoma,3,31,male,IDHmut-non-codel,112,Alive,3,3
+TCGA-HT-7882,LGG,oligodendroglioma,3,66,male,IDHwt,113,Deceased,3,4
+TCGA-HT-8011,LGG,astrocytoma,3,55,male,IDHwt,494,Alive,1,1
+TCGA-HT-8019,LGG,oligodendroglioma,3,34,female,IDHwt,1004,Alive,1,1
+TCGA-HT-8104,LGG,astrocytoma,3,51,female,IDHwt,372,Alive,1,1
+TCGA-HT-8105,LGG,oligodendroglioma,3,54,male,IDHmut-codel,190,Alive,1,1
+TCGA-HT-8106,LGG,astrocytoma,3,53,male,IDHmut-non-codel,3,Alive,1,2
+TCGA-HT-8109,LGG,oligodendroglioma,3,64,male,IDHmut-codel,169,Alive,1,1
+TCGA-HT-8110,LGG,astrocytoma,3,57,male,IDHwt,419,Alive,1,1
+TCGA-HT-8111,LGG,oligoastrocytoma,3,32,male,IDHmut-non-codel,7,Alive,1,1
+TCGA-HT-8114,LGG,oligoastrocytoma,3,36,male,IDHmut-non-codel,1040,Alive,1,1
+TCGA-HT-8563,LGG,astrocytoma,3,30,female,IDHmut-non-codel,860,Alive,1,2
+TCGA-HT-8564,LGG,astrocytoma,3,47,male,IDHwt,478,Alive,1,1
+TCGA-HT-A4DS,LGG,astrocytoma,3,55,female,IDHwt,7,Alive,1,2
+TCGA-HT-A4DV,LGG,oligodendroglioma,3,51,female,IDHmut-codel,792,Alive,2,2
+TCGA-HT-A5R7,LGG,astrocytoma,3,33,female,IDHmut-non-codel,615,Alive,1,1
+TCGA-HT-A5R9,LGG,oligodendroglioma,3,48,female,IDHmut-codel,2,Alive,1,3
+TCGA-HT-A5RA,LGG,astrocytoma,3,65,female,IDHwt,832,Alive,1,1
+TCGA-HT-A5RC,LGG,astrocytoma,3,70,female,IDHwt,162,Deceased,1,1
+TCGA-HT-A618,LGG,astrocytoma,3,37,female,IDHmut-non-codel,512,Alive,1,1
+TCGA-HT-A74H,LGG,astrocytoma,3,62,male,IDHwt,74,Alive,1,1
+TCGA-HT-A74O,LGG,astrocytoma,3,34,male,IDHmut-non-codel,3,Alive,1,1
+TCGA-HW-8319,LGG,astrocytoma,3,34,female,IDHmut-non-codel,1209,Deceased,1,1
+TCGA-HW-8320,LGG,astrocytoma,3,36,male,IDHmut-non-codel,1217,Alive,1,1
+TCGA-HW-8321,LGG,astrocytoma,3,31,male,IDHmut-non-codel,1294,Alive,1,1
+TCGA-HW-A5KJ,LGG,oligodendroglioma,3,68,male,IDHmut-codel,962,Deceased,1,1
+TCGA-HW-A5KK,LGG,astrocytoma,3,64,male,IDHwt,388,Deceased,1,1
+TCGA-IK-8125,LGG,oligoastrocytoma,3,62,male,IDHmut-codel,1301,Alive,1,1
+TCGA-KT-A74X,LGG,oligoastrocytoma,3,26,male,IDHmut-codel,438,Alive,1,1
+TCGA-KT-A7W1,LGG,astrocytoma,3,45,female,IDHwt,438,Alive,1,1
+TCGA-QH-A65R,LGG,oligodendroglioma,3,38,female,IDHmut-codel,461,Alive,1,1
+TCGA-QH-A65X,LGG,oligoastrocytoma,3,28,female,IDHmut-codel,482,Alive,1,1
+TCGA-QH-A6CU,LGG,oligodendroglioma,3,52,female,IDHmut-codel,451,Alive,1,1
+TCGA-QH-A6CV,LGG,oligoastrocytoma,3,51,male,IDHwt,442,Alive,1,1
+TCGA-QH-A6CW,LGG,oligoastrocytoma,3,43,male,IDHmut-non-codel,414,Alive,1,2
+TCGA-QH-A6CY,LGG,oligoastrocytoma,3,38,male,IDHmut-codel,408,Alive,1,2
+TCGA-QH-A6X4,LGG,oligoastrocytoma,3,47,male,IDHmut-codel,442,Alive,1,2
+TCGA-QH-A6X8,LGG,oligodendroglioma,3,56,female,IDHmut-codel,509,Alive,1,2
+TCGA-QH-A6XC,LGG,astrocytoma,3,48,male,IDHwt,508,Alive,1,1
+TCGA-QH-A870,LGG,oligoastrocytoma,3,38,female,IDHmut-non-codel,395,Alive,1,2
+TCGA-R8-A6ML,LGG,oligodendroglioma,3,52,male,IDHmut-codel,2860,Alive,6,6
+TCGA-S9-A6TS,LGG,astrocytoma,3,48,female,IDHmut-non-codel,1891,Deceased,1,1
+TCGA-S9-A6TV,LGG,oligoastrocytoma,3,50,male,IDHmut-non-codel,571,Alive,1,2
+TCGA-S9-A6TW,LGG,oligodendroglioma,3,40,male,IDHmut-codel,1250,Alive,1,1
+TCGA-S9-A6TX,LGG,oligodendroglioma,3,46,male,IDHmut-codel,1245,Alive,1,2
+TCGA-S9-A6U0,LGG,astrocytoma,3,46,male,IDHwt,742,Deceased,1,1
+TCGA-S9-A6U1,LGG,astrocytoma,3,22,female,IDHmut-non-codel,785,Alive,1,1
+TCGA-S9-A6U6,LGG,astrocytoma,3,28,male,IDHmut-non-codel,1069,Alive,1,1
+TCGA-S9-A6U9,LGG,astrocytoma,3,36,male,IDHmut-non-codel,2918,Alive,1,1
+TCGA-S9-A6UA,LGG,astrocytoma,3,66,male,IDHwt,178,Deceased,1,1
+TCGA-S9-A6WD,LGG,oligodendroglioma,3,58,male,IDHmut-codel,2289,Alive,1,2
+TCGA-S9-A6WG,LGG,astrocytoma,3,31,male,IDHmut-non-codel,2602,Alive,1,1
+TCGA-S9-A6WL,LGG,astrocytoma,3,52,male,IDHmut-codel,946,Alive,1,2
+TCGA-S9-A6WM,LGG,astrocytoma,3,59,female,IDHwt,604,Alive,1,1
+TCGA-S9-A6WN,LGG,astrocytoma,3,38,female,IDHmut-codel,805,Alive,1,1
+TCGA-S9-A6WP,LGG,oligoastrocytoma,3,42,male,IDHmut-codel,567,Alive,1,1
+TCGA-S9-A7IS,LGG,astrocytoma,3,33,female,IDHmut-non-codel,241,Deceased,1,1
+TCGA-S9-A7IX,LGG,astrocytoma,3,57,male,IDHwt,819,Deceased,1,1
+TCGA-S9-A7IY,LGG,oligoastrocytoma,3,39,male,IDHmut-codel,715,Alive,1,1
+TCGA-S9-A7IZ,LGG,astrocytoma,3,48,female,IDHmut-non-codel,608,Alive,1,1
+TCGA-S9-A7J0,LGG,oligodendroglioma,3,30,female,IDHmut-non-codel,609,Alive,1,1
+TCGA-S9-A7J2,LGG,oligodendroglioma,3,25,male,IDHmut-codel,62,Alive,1,1
+TCGA-S9-A7J3,LGG,oligodendroglioma,3,52,female,IDHmut-codel,629,Alive,1,1
+TCGA-S9-A7QW,LGG,astrocytoma,3,54,female,IDHmut-non-codel,458,Alive,1,1
+TCGA-S9-A7QX,LGG,astrocytoma,3,36,female,IDHmut-non-codel,564,Alive,1,1
+TCGA-S9-A7R2,LGG,astrocytoma,3,69,male,IDHwt,316,Deceased,1,1
+TCGA-S9-A7R4,LGG,astrocytoma,3,46,male,IDHmut-non-codel,914,Alive,1,1
+TCGA-S9-A7R8,LGG,astrocytoma,3,44,female,IDHmut-non-codel,961,Deceased,1,1
+TCGA-S9-A89V,LGG,astrocytoma,3,70,male,IDHwt,569,Alive,1,1
+TCGA-S9-A89Z,LGG,astrocytoma,3,40,male,IDHmut-non-codel,623,Alive,1,1
+TCGA-TM-A7C3,LGG,astrocytoma,3,43,female,IDHwt,1666,Deceased,1,1
+TCGA-TM-A84B,LGG,astrocytoma,3,40,male,IDHwt,758,Deceased,1,2
+TCGA-TM-A84F,LGG,astrocytoma,3,48,male,IDHmut-non-codel,1796,Alive,2,2
+TCGA-TM-A84G,LGG,oligodendroglioma,3,54,female,IDHmut-codel,1236,Alive,1,1
+TCGA-TM-A84H,LGG,oligoastrocytoma,3,44,female,IDHmut-non-codel,926,Alive,2,2
+TCGA-TM-A84J,LGG,oligodendroglioma,3,63,male,IDHwt,735,Alive,1,1
+TCGA-TM-A84M,LGG,oligodendroglioma,3,40,male,IDHmut-codel,754,Alive,2,4
+TCGA-TM-A84O,LGG,oligodendroglioma,3,61,female,IDHmut-codel,1011,Deceased,1,1
+TCGA-TM-A84S,LGG,oligodendroglioma,3,36,male,IDHmut-codel,454,Alive,1,2
+TCGA-VM-A8CB,LGG,oligodendroglioma,3,33,male,IDHmut-codel,3,Alive,7,7
+TCGA-VM-A8CD,LGG,astrocytoma,3,58,male,IDHwt,240,Deceased,7,7
+TCGA-VV-A829,LGG,oligoastrocytoma,3,44,male,IDHmut-codel,1127,Alive,2,2
+TCGA-VV-A86M,LGG,astrocytoma,3,36,female,IDHmut-non-codel,487,Alive,1,1
+TCGA-WY-A858,LGG,astrocytoma,3,32,female,IDHmut-non-codel,1337,Alive,1,1
+TCGA-02-0001,GBM,astrocytoma (glioblastoma),4,44,female,IDHwt,358,Deceased,3,3
+TCGA-02-0003,GBM,astrocytoma (glioblastoma),4,50,male,IDHwt,144,Deceased,3,3
+TCGA-02-0006,GBM,astrocytoma (glioblastoma),4,56,female,IDHwt,558,Deceased,1,1
+TCGA-02-0007,GBM,astrocytoma (glioblastoma),4,40,female,IDHwt,705,Deceased,1,1
+TCGA-02-0009,GBM,astrocytoma (glioblastoma),4,61,female,IDHwt,322,Deceased,3,5
+TCGA-02-0010,GBM,astrocytoma (glioblastoma),4,20,female,IDHmut-non-codel,1077,Deceased,4,5
+TCGA-02-0011,GBM,astrocytoma (glioblastoma),4,18,female,IDHwt,630,Deceased,1,1
+TCGA-02-0014,GBM,astrocytoma (glioblastoma),4,25,male,IDHmut-non-codel,2512,Deceased,1,1
+TCGA-02-0015,GBM,astrocytoma (glioblastoma),4,50,male,IDHwt,627,Deceased,1,3
+TCGA-02-0016,GBM,astrocytoma (glioblastoma),4,50,male,IDHwt,2648,Deceased,1,1
+TCGA-02-0021,GBM,astrocytoma (glioblastoma),4,43,female,IDHwt,2362,Deceased,1,3
+TCGA-02-0023,GBM,astrocytoma (glioblastoma),4,38,female,IDHwt,612,Deceased,1,1
+TCGA-02-0024,GBM,astrocytoma (glioblastoma),4,35,male,IDHwt,1615,Deceased,1,1
+TCGA-02-0025,GBM,astrocytoma (glioblastoma),4,47,male,IDHwt,1300,Deceased,2,5
+TCGA-02-0026,GBM,astrocytoma (glioblastoma),4,27,male,IDHmut-non-codel,748,Deceased,2,3
+TCGA-02-0027,GBM,astrocytoma (glioblastoma),4,33,female,IDHwt,370,Deceased,1,2
+TCGA-02-0033,GBM,astrocytoma (glioblastoma),4,54,male,IDHwt,86,Deceased,1,2
+TCGA-02-0034,GBM,astrocytoma (glioblastoma),4,60,male,IDHwt,430,Deceased,3,5
+TCGA-02-0037,GBM,astrocytoma (glioblastoma),4,74,female,IDHwt,110,Deceased,2,3
+TCGA-02-0038,GBM,astrocytoma (glioblastoma),4,48,female,IDHwt,326,Deceased,1,2
+TCGA-02-0048,GBM,astrocytoma (glioblastoma),4,80,male,IDHwt,98,Deceased,1,1
+TCGA-02-0052,GBM,astrocytoma (glioblastoma),4,49,male,IDHwt,383,Deceased,1,1
+TCGA-02-0054,GBM,astrocytoma (glioblastoma),4,44,female,IDHwt,199,Deceased,1,2
+TCGA-02-0058,GBM,astrocytoma (glioblastoma),4,28,female,IDHmut-non-codel,254,Deceased,1,1
+TCGA-02-0068,GBM,astrocytoma (glioblastoma),4,57,male,IDHwt,804,Deceased,1,2
+TCGA-02-0069,GBM,astrocytoma (glioblastoma),4,31,female,IDHwt,873,Alive,1,1
+TCGA-02-0070,GBM,astrocytoma (glioblastoma),4,70,male,IDHwt,762,Alive,1,1
+TCGA-02-0071,GBM,astrocytoma (glioblastoma),4,53,male,IDHwt,167,Deceased,1,1
+TCGA-02-0074,GBM,astrocytoma (glioblastoma),4,68,female,IDHwt,310,Deceased,1,2
+TCGA-02-0075,GBM,astrocytoma (glioblastoma),4,63,male,IDHwt,634,Deceased,1,1
+TCGA-02-0079,GBM,astrocytoma (glioblastoma),4,57,male,IDHwt,829,Deceased,1,2
+TCGA-02-0085,GBM,astrocytoma (glioblastoma),4,63,female,IDHwt,1561,Deceased,1,2
+TCGA-02-0086,GBM,astrocytoma (glioblastoma),4,45,female,IDHwt,268,Deceased,1,2
+TCGA-02-0099,GBM,astrocytoma (glioblastoma),4,46,male,IDHwt,106,Deceased,1,3
+TCGA-02-0115,GBM,astrocytoma (glioblastoma),4,52,male,IDHwt,476,Deceased,1,1
+TCGA-02-0258,GBM,astrocytoma (glioblastoma),4,36,female,NA,503,Deceased,2,4
+TCGA-02-0266,GBM,astrocytoma (glioblastoma),4,14,male,NA,539,Deceased,1,2
+TCGA-02-0269,GBM,astrocytoma (glioblastoma),4,68,male,NA,327,Deceased,1,2
+TCGA-02-0281,GBM,astrocytoma (glioblastoma),4,78,female,NA,121,Deceased,2,3
+TCGA-02-0285,GBM,astrocytoma (glioblastoma),4,50,female,NA,422,Deceased,1,2
+TCGA-02-0289,GBM,astrocytoma (glioblastoma),4,57,male,NA,432,Deceased,2,3
+TCGA-02-0317,GBM,astrocytoma (glioblastoma),4,40,male,NA,372,Deceased,2,5
+TCGA-02-0321,GBM,astrocytoma (glioblastoma),4,74,male,NA,301,Deceased,2,3
+TCGA-02-0325,GBM,astrocytoma (glioblastoma),4,61,male,NA,323,Deceased,2,3
+TCGA-02-0326,GBM,astrocytoma (glioblastoma),4,82,female,NA,223,Deceased,2,3
+TCGA-02-0330,GBM,astrocytoma (glioblastoma),4,51,female,NA,484,Deceased,1,1
+TCGA-02-0332,GBM,astrocytoma (glioblastoma),4,46,female,NA,782,Deceased,1,1
+TCGA-02-0333,GBM,astrocytoma (glioblastoma),4,77,female,NA,133,Deceased,1,2
+TCGA-02-0337,GBM,astrocytoma (glioblastoma),4,48,male,NA,764,Deceased,1,1
+TCGA-02-0338,GBM,astrocytoma (glioblastoma),4,41,male,NA,322,Deceased,2,2
+TCGA-02-0339,GBM,astrocytoma (glioblastoma),4,67,male,NA,377,Deceased,1,1
+TCGA-02-0422,GBM,astrocytoma (glioblastoma),4,50,male,NA,441,Deceased,1,1
+TCGA-02-0430,GBM,astrocytoma (glioblastoma),4,67,female,NA,321,Deceased,1,1
+TCGA-02-0432,GBM,astrocytoma (glioblastoma),4,36,male,NA,1433,Deceased,1,1
+TCGA-02-0440,GBM,astrocytoma (glioblastoma),4,62,male,NA,345,Deceased,1,1
+TCGA-02-0446,GBM,astrocytoma (glioblastoma),4,61,male,NA,282,Deceased,1,1
+TCGA-02-0451,GBM,astrocytoma (glioblastoma),4,62,female,NA,493,Deceased,2,2
+TCGA-06-0122,GBM,astrocytoma (glioblastoma),4,84,female,IDHwt,187,Deceased,3,4
+TCGA-06-0124,GBM,astrocytoma (glioblastoma),4,67,male,IDHwt,620,Deceased,4,7
+TCGA-06-0125,GBM,astrocytoma (glioblastoma),4,63,female,IDHwt,1448,Deceased,1,1
+TCGA-06-0126,GBM,astrocytoma (glioblastoma),4,86,male,IDHwt,211,Deceased,1,2
+TCGA-06-0127,GBM,astrocytoma (glioblastoma),4,67,male,IDHwt,121,Deceased,1,2
+TCGA-06-0128,GBM,astrocytoma (glioblastoma),4,66,male,IDHmut-non-codel,691,Deceased,1,1
+TCGA-06-0129,GBM,astrocytoma (glioblastoma),4,30,male,IDHmut-non-codel,1024,Deceased,1,1
+TCGA-06-0130,GBM,astrocytoma (glioblastoma),4,54,male,IDHwt,394,Deceased,1,1
+TCGA-06-0133,GBM,astrocytoma (glioblastoma),4,64,male,IDHwt,435,Deceased,2,3
+TCGA-06-0137,GBM,astrocytoma (glioblastoma),4,63,female,IDHwt,812,Deceased,4,4
+TCGA-06-0138,GBM,astrocytoma (glioblastoma),4,43,male,IDHwt,737,Deceased,1,1
+TCGA-06-0139,GBM,astrocytoma (glioblastoma),4,40,male,IDHwt,362,Deceased,1,1
+TCGA-06-0141,GBM,astrocytoma (glioblastoma),4,62,male,IDHwt,313,Deceased,2,2
+TCGA-06-0143,GBM,astrocytoma (glioblastoma),4,58,male,IDHwt,357,Deceased,3,5
+TCGA-06-0145,GBM,astrocytoma (glioblastoma),4,53,female,IDHwt,71,Deceased,2,4
+TCGA-06-0147,GBM,astrocytoma (glioblastoma),4,51,female,IDHwt,541,Deceased,1,2
+TCGA-06-0148,GBM,astrocytoma (glioblastoma),4,76,male,IDHwt,307,Deceased,1,2
+TCGA-06-0152,GBM,astrocytoma (glioblastoma),4,68,male,IDHwt,375,Deceased,1,1
+TCGA-06-0154,GBM,astrocytoma (glioblastoma),4,54,male,IDHwt,424,Deceased,1,2
+TCGA-06-0156,GBM,astrocytoma (glioblastoma),4,57,male,NA,178,Deceased,1,2
+TCGA-06-0157,GBM,astrocytoma (glioblastoma),4,63,female,IDHwt,97,Deceased,1,2
+TCGA-06-0158,GBM,astrocytoma (glioblastoma),4,73,male,IDHwt,329,Deceased,1,2
+TCGA-06-0166,GBM,astrocytoma (glioblastoma),4,51,male,IDHwt,178,Deceased,1,2
+TCGA-06-0168,GBM,astrocytoma (glioblastoma),4,59,female,IDHwt,598,Deceased,1,2
+TCGA-06-0169,GBM,astrocytoma (glioblastoma),4,68,male,IDHwt,100,Deceased,1,2
+TCGA-06-0171,GBM,astrocytoma (glioblastoma),4,65,male,IDHwt,399,Deceased,1,2
+TCGA-06-0173,GBM,astrocytoma (glioblastoma),4,72,female,IDHwt,136,Deceased,1,2
+TCGA-06-0174,GBM,astrocytoma (glioblastoma),4,54,male,IDHwt,98,Deceased,1,2
+TCGA-06-0176,GBM,astrocytoma (glioblastoma),4,34,male,IDHwt,2768,Alive,1,2
+TCGA-06-0178,GBM,astrocytoma (glioblastoma),4,38,male,IDHmut-non-codel,2681,Deceased,1,2
+TCGA-06-0184,GBM,astrocytoma (glioblastoma),4,63,male,IDHwt,2126,Deceased,1,2
+TCGA-06-0185,GBM,astrocytoma (glioblastoma),4,54,male,IDHwt,2246,Alive,1,2
+TCGA-06-0187,GBM,astrocytoma (glioblastoma),4,69,male,IDHwt,828,Deceased,1,1
+TCGA-06-0188,GBM,astrocytoma (glioblastoma),4,71,male,IDHwt,1356,Deceased,2,2
+TCGA-06-0189,GBM,astrocytoma (glioblastoma),4,55,male,IDHwt,469,Deceased,1,2
+TCGA-06-0190,GBM,astrocytoma (glioblastoma),4,62,male,IDHwt,317,Deceased,1,3
+TCGA-06-0192,GBM,astrocytoma (glioblastoma),4,58,male,IDHwt,1185,Deceased,1,2
+TCGA-06-0195,GBM,astrocytoma (glioblastoma),4,63,male,IDHwt,225,Deceased,1,3
+TCGA-06-0197,GBM,astrocytoma (glioblastoma),4,65,female,IDHwt,169,Deceased,1,2
+TCGA-06-0201,GBM,astrocytoma (glioblastoma),4,51,female,IDHwt,12,Deceased,1,2
+TCGA-06-0206,GBM,astrocytoma (glioblastoma),4,40,male,IDHwt,233,Deceased,1,2
+TCGA-06-0208,GBM,astrocytoma (glioblastoma),4,52,female,IDHwt,256,Deceased,1,2
+TCGA-06-0209,GBM,astrocytoma (glioblastoma),4,76,male,IDHwt,232,Deceased,1,2
+TCGA-06-0210,GBM,astrocytoma (glioblastoma),4,72,female,IDHwt,225,Deceased,1,2
+TCGA-06-0211,GBM,astrocytoma (glioblastoma),4,47,male,IDHwt,360,Deceased,1,2
+TCGA-06-0213,GBM,astrocytoma (glioblastoma),4,55,female,IDHwt,16,Deceased,1,2
+TCGA-06-0214,GBM,astrocytoma (glioblastoma),4,66,male,IDHwt,457,Deceased,1,3
+TCGA-06-0216,GBM,astrocytoma (glioblastoma),4,61,female,IDHwt,735,Deceased,1,3
+TCGA-06-0219,GBM,astrocytoma (glioblastoma),4,67,male,IDHwt,22,Deceased,1,2
+TCGA-06-0221,GBM,astrocytoma (glioblastoma),4,31,male,IDHmut-non-codel,603,Deceased,1,2
+TCGA-06-0237,GBM,astrocytoma (glioblastoma),4,75,female,IDHwt,415,Deceased,1,2
+TCGA-06-0238,GBM,astrocytoma (glioblastoma),4,46,male,IDHwt,405,Deceased,1,2
+TCGA-06-0241,GBM,astrocytoma (glioblastoma),4,65,female,IDHwt,1481,Deceased,1,2
+TCGA-06-0644,GBM,astrocytoma (glioblastoma),4,71,male,IDHwt,384,Deceased,1,2
+TCGA-06-0645,GBM,astrocytoma (glioblastoma),4,55,female,IDHwt,175,Deceased,1,2
+TCGA-06-0646,GBM,astrocytoma (glioblastoma),4,60,male,IDHwt,175,Deceased,1,3
+TCGA-06-0648,GBM,astrocytoma (glioblastoma),4,77,male,IDHwt,298,Deceased,1,2
+TCGA-06-0649,GBM,astrocytoma (glioblastoma),4,73,female,IDHwt,64,Deceased,1,3
+TCGA-06-0686,GBM,astrocytoma (glioblastoma),4,53,male,IDHwt,432,Deceased,1,2
+TCGA-06-0743,GBM,astrocytoma (glioblastoma),4,69,male,IDHwt,803,Deceased,1,2
+TCGA-06-0744,GBM,astrocytoma (glioblastoma),4,66,male,IDHwt,1426,Deceased,1,2
+TCGA-06-0745,GBM,astrocytoma (glioblastoma),4,59,male,IDHwt,239,Deceased,1,2
+TCGA-06-0747,GBM,astrocytoma (glioblastoma),4,53,male,IDHwt,82,Deceased,1,2
+TCGA-06-0749,GBM,astrocytoma (glioblastoma),4,50,male,IDHwt,82,Deceased,1,3
+TCGA-06-0750,GBM,astrocytoma (glioblastoma),4,43,male,IDHwt,28,Deceased,1,2
+TCGA-06-0875,GBM,astrocytoma (glioblastoma),4,61,female,IDHwt,1322,Alive,1,2
+TCGA-06-0876,GBM,astrocytoma (glioblastoma),4,72,female,IDHwt,1405,Alive,1,2
+TCGA-06-0878,GBM,astrocytoma (glioblastoma),4,74,male,IDHwt,218,Alive,1,2
+TCGA-06-0879,GBM,astrocytoma (glioblastoma),4,52,male,IDHwt,1229,Deceased,1,2
+TCGA-06-0882,GBM,astrocytoma (glioblastoma),4,30,male,IDHwt,632,Deceased,1,1
+TCGA-06-1084,GBM,astrocytoma (glioblastoma),4,54,male,IDHwt,728,Deceased,1,1
+TCGA-06-1086,GBM,astrocytoma (glioblastoma),4,42,male,NA,208,Deceased,1,2
+TCGA-06-1087,GBM,astrocytoma (glioblastoma),4,75,male,IDHwt,123,Deceased,1,1
+TCGA-06-1800,GBM,astrocytoma (glioblastoma),4,61,male,IDHwt,815,Deceased,1,2
+TCGA-06-1801,GBM,astrocytoma (glioblastoma),4,56,female,IDHwt,360,Deceased,1,2
+TCGA-06-1805,GBM,astrocytoma (glioblastoma),4,28,female,IDHmut-non-codel,1031,Alive,1,1
+TCGA-06-5408,GBM,astrocytoma (glioblastoma),4,54,female,IDHwt,357,Deceased,1,2
+TCGA-06-5410,GBM,astrocytoma (glioblastoma),4,72,female,IDHwt,108,Deceased,1,2
+TCGA-06-5411,GBM,astrocytoma (glioblastoma),4,51,male,IDHwt,254,Deceased,1,1
+TCGA-06-5412,GBM,astrocytoma (glioblastoma),4,78,female,IDHwt,138,Deceased,1,2
+TCGA-06-5413,GBM,astrocytoma (glioblastoma),4,67,male,IDHwt,268,Alive,1,2
+TCGA-06-5414,GBM,astrocytoma (glioblastoma),4,61,male,IDHwt,273,Alive,1,2
+TCGA-06-5415,GBM,astrocytoma (glioblastoma),4,60,male,IDHwt,260,Alive,1,1
+TCGA-06-5416,GBM,astrocytoma (glioblastoma),4,23,female,NA,204,Alive,1,2
+TCGA-06-5417,GBM,astrocytoma (glioblastoma),4,45,female,NA,155,Alive,1,2
+TCGA-06-5418,GBM,astrocytoma (glioblastoma),4,75,female,IDHwt,83,Deceased,1,1
+TCGA-06-5856,GBM,astrocytoma (glioblastoma),4,58,male,IDHwt,114,Deceased,1,2
+TCGA-06-5858,GBM,astrocytoma (glioblastoma),4,45,female,IDHwt,187,Alive,1,2
+TCGA-06-5859,GBM,astrocytoma (glioblastoma),4,63,male,IDHwt,139,Alive,1,2
+TCGA-06-6388,GBM,astrocytoma (glioblastoma),4,64,female,IDHwt,159,Deceased,1,2
+TCGA-06-6390,GBM,astrocytoma (glioblastoma),4,58,male,IDHwt,164,Deceased,1,1
+TCGA-06-6391,GBM,astrocytoma (glioblastoma),4,44,female,IDHwt,45,Deceased,1,3
+TCGA-08-0244,GBM,astrocytoma (glioblastoma),4,62,male,IDHwt,690,Deceased,1,2
+TCGA-08-0245,GBM,astrocytoma (glioblastoma),4,31,female,IDHwt,1151,Deceased,1,2
+TCGA-08-0246,GBM,astrocytoma (glioblastoma),4,57,female,IDHwt,127,Deceased,1,1
+TCGA-08-0344,GBM,astrocytoma (glioblastoma),4,66,male,IDHmut-codel,3524,Deceased,1,2
+TCGA-08-0345,GBM,astrocytoma (glioblastoma),4,71,female,IDHwt,53,Deceased,1,2
+TCGA-08-0346,GBM,astrocytoma (glioblastoma),4,69,male,IDHwt,256,Deceased,1,2
+TCGA-08-0347,GBM,astrocytoma (glioblastoma),4,50,male,IDHwt,782,Deceased,1,2
+TCGA-08-0348,GBM,astrocytoma (glioblastoma),4,63,male,IDHwt,370,Deceased,1,2
+TCGA-08-0349,GBM,astrocytoma (glioblastoma),4,46,male,IDHwt,298,Deceased,1,2
+TCGA-08-0350,GBM,astrocytoma (glioblastoma),4,32,male,IDHwt,889,Deceased,1,2
+TCGA-08-0351,GBM,astrocytoma (glioblastoma),4,40,male,IDHwt,1987,Deceased,1,3
+TCGA-08-0352,GBM,astrocytoma (glioblastoma),4,79,male,IDHwt,39,Deceased,1,1
+TCGA-08-0353,GBM,astrocytoma (glioblastoma),4,58,male,IDHwt,256,Deceased,1,2
+TCGA-08-0354,GBM,astrocytoma (glioblastoma),4,52,female,IDHwt,546,Deceased,1,2
+TCGA-08-0355,GBM,astrocytoma (glioblastoma),4,30,female,IDHwt,747,Deceased,1,2
+TCGA-08-0356,GBM,astrocytoma (glioblastoma),4,59,female,IDHwt,946,Deceased,1,1
+TCGA-08-0357,GBM,astrocytoma (glioblastoma),4,49,male,IDHwt,1143,Deceased,1,2
+TCGA-08-0358,GBM,astrocytoma (glioblastoma),4,50,male,IDHwt,678,Deceased,1,2
+TCGA-08-0359,GBM,astrocytoma (glioblastoma),4,59,female,IDHwt,103,Deceased,1,2
+TCGA-08-0375,GBM,astrocytoma (glioblastoma),4,51,female,IDHwt,372,Deceased,1,2
+TCGA-08-0380,GBM,astrocytoma (glioblastoma),4,74,female,IDHwt,454,Deceased,1,1
+TCGA-08-0385,GBM,astrocytoma (glioblastoma),4,71,male,NA,82,Deceased,1,2
+TCGA-08-0386,GBM,astrocytoma (glioblastoma),4,74,male,IDHwt,548,Deceased,1,1
+TCGA-08-0389,GBM,astrocytoma (glioblastoma),4,59,male,IDHwt,467,Deceased,1,2
+TCGA-08-0390,GBM,astrocytoma (glioblastoma),4,69,male,IDHwt,425,Deceased,1,2
+TCGA-08-0392,GBM,astrocytoma (glioblastoma),4,60,male,IDHwt,22,Deceased,1,2
+TCGA-08-0509,GBM,astrocytoma (glioblastoma),4,63,male,NA,382,Deceased,1,2
+TCGA-08-0510,GBM,astrocytoma (glioblastoma),4,75,male,NA,130,Deceased,1,3
+TCGA-08-0512,GBM,astrocytoma (glioblastoma),4,48,male,NA,1282,Deceased,1,1
+TCGA-08-0514,GBM,astrocytoma (glioblastoma),4,69,female,NA,337,Deceased,1,2
+TCGA-08-0516,GBM,astrocytoma (glioblastoma),4,14,male,NA,596,Deceased,1,2
+TCGA-08-0517,GBM,astrocytoma (glioblastoma),4,34,female,NA,1785,Deceased,1,2
+TCGA-08-0518,GBM,astrocytoma (glioblastoma),4,60,female,NA,588,Deceased,1,1
+TCGA-08-0520,GBM,astrocytoma (glioblastoma),4,70,male,NA,327,Deceased,1,2
+TCGA-08-0521,GBM,astrocytoma (glioblastoma),4,17,male,NA,146,Deceased,1,1
+TCGA-08-0524,GBM,astrocytoma (glioblastoma),4,17,female,NA,221,Deceased,1,2
+TCGA-08-0525,GBM,astrocytoma (glioblastoma),4,52,male,NA,486,Deceased,1,2
+TCGA-08-0529,GBM,astrocytoma (glioblastoma),4,56,female,NA,560,Deceased,1,1
+TCGA-08-0531,GBM,astrocytoma (glioblastoma),4,64,male,NA,230,Deceased,1,1
+TCGA-12-0615,GBM,astrocytoma (glioblastoma),4,78,female,IDHwt,467,Deceased,1,1
+TCGA-12-0616,GBM,astrocytoma (glioblastoma),4,36,female,IDHwt,448,Deceased,1,2
+TCGA-12-0618,GBM,astrocytoma (glioblastoma),4,49,male,IDHwt,395,Deceased,1,2
+TCGA-12-0619,GBM,astrocytoma (glioblastoma),4,60,male,IDHwt,1062,Deceased,1,2
+TCGA-12-0620,GBM,astrocytoma (glioblastoma),4,57,male,IDHwt,318,Deceased,1,1
+TCGA-12-0654,GBM,astrocytoma (glioblastoma),4,48,female,NA,231,Deceased,1,2
+TCGA-12-0656,GBM,astrocytoma (glioblastoma),4,48,female,IDHwt,2883,Deceased,1,2
+TCGA-12-0657,GBM,astrocytoma (glioblastoma),4,69,male,IDHwt,3,Deceased,2,2
+TCGA-12-0662,GBM,astrocytoma (glioblastoma),4,51,male,IDHwt,1161,Deceased,1,1
+TCGA-12-0670,GBM,astrocytoma (glioblastoma),4,60,male,IDHwt,790,Deceased,1,1
+TCGA-12-0688,GBM,astrocytoma (glioblastoma),4,74,male,IDHwt,811,Deceased,1,1
+TCGA-12-0691,GBM,astrocytoma (glioblastoma),4,63,male,IDHwt,369,Deceased,1,1
+TCGA-12-0692,GBM,astrocytoma (glioblastoma),4,75,female,IDHwt,111,Deceased,1,1
+TCGA-12-0703,GBM,astrocytoma (glioblastoma),4,46,male,NA,620,Deceased,1,1
+TCGA-12-0707,GBM,astrocytoma (glioblastoma),4,55,male,IDHwt,864,Deceased,1,2
+TCGA-12-0769,GBM,astrocytoma (glioblastoma),4,52,male,NA,458,Deceased,1,2
+TCGA-12-0772,GBM,astrocytoma (glioblastoma),4,46,male,NA,1638,Deceased,1,2
+TCGA-12-0773,GBM,astrocytoma (glioblastoma),4,24,male,IDHwt,1315,Deceased,1,2
+TCGA-12-0775,GBM,astrocytoma (glioblastoma),4,75,female,IDHwt,232,Deceased,1,1
+TCGA-12-0776,GBM,astrocytoma (glioblastoma),4,52,male,NA,296,Deceased,1,1
+TCGA-12-0778,GBM,astrocytoma (glioblastoma),4,53,male,IDHwt,454,Deceased,1,2
+TCGA-12-0780,GBM,astrocytoma (glioblastoma),4,51,female,NA,452,Deceased,1,2
+TCGA-12-0818,GBM,astrocytoma (glioblastoma),4,45,female,IDHmut-non-codel,2791,Deceased,1,1
+TCGA-12-0819,GBM,astrocytoma (glioblastoma),4,49,female,IDHwt,754,Deceased,1,2
+TCGA-12-0820,GBM,astrocytoma (glioblastoma),4,40,male,IDHwt,562,Deceased,1,1
+TCGA-12-0821,GBM,astrocytoma (glioblastoma),4,62,male,IDHwt,323,Deceased,1,2
+TCGA-12-0822,GBM,astrocytoma (glioblastoma),4,46,male,IDHwt,715,Deceased,1,2
+TCGA-12-0826,GBM,astrocytoma (glioblastoma),4,38,female,IDHwt,845,Deceased,1,2
+TCGA-12-0827,GBM,astrocytoma (glioblastoma),4,38,female,IDHmut-non-codel,1179,Deceased,1,2
+TCGA-12-0828,GBM,astrocytoma (glioblastoma),4,57,male,IDHwt,272,Deceased,1,1
+TCGA-12-0829,GBM,astrocytoma (glioblastoma),4,75,male,IDHwt,626,Deceased,1,2
+TCGA-12-1088,GBM,astrocytoma (glioblastoma),4,53,female,IDHwt,3881,Deceased,1,2
+TCGA-12-1089,GBM,astrocytoma (glioblastoma),4,64,male,IDHwt,177,Deceased,1,2
+TCGA-12-1090,GBM,astrocytoma (glioblastoma),4,58,male,NA,231,Deceased,1,2
+TCGA-12-1091,GBM,astrocytoma (glioblastoma),4,10,female,NA,1010,Deceased,1,2
+TCGA-12-1092,GBM,astrocytoma (glioblastoma),4,58,male,IDHwt,661,Deceased,1,1
+TCGA-12-1093,GBM,astrocytoma (glioblastoma),4,66,female,IDHwt,486,Deceased,1,2
+TCGA-12-1094,GBM,astrocytoma (glioblastoma),4,56,male,NA,372,Deceased,1,2
+TCGA-12-1095,GBM,astrocytoma (glioblastoma),4,65,female,NA,482,Deceased,1,2
+TCGA-12-1096,GBM,astrocytoma (glioblastoma),4,55,male,NA,277,Deceased,1,2
+TCGA-12-1097,GBM,astrocytoma (glioblastoma),4,61,male,NA,442,Deceased,1,2
+TCGA-12-1098,GBM,astrocytoma (glioblastoma),4,75,female,NA,121,Deceased,1,2
+TCGA-12-1099,GBM,astrocytoma (glioblastoma),4,68,female,NA,126,Deceased,1,1
+TCGA-12-1598,GBM,astrocytoma (glioblastoma),4,75,female,IDHwt,476,Deceased,1,2
+TCGA-12-1599,GBM,astrocytoma (glioblastoma),4,47,female,IDHwt,781,Deceased,1,2
+TCGA-12-1600,GBM,astrocytoma (glioblastoma),4,86,male,IDHwt,448,Deceased,1,2
+TCGA-12-1602,GBM,astrocytoma (glioblastoma),4,58,male,IDHwt,206,Deceased,1,2
+TCGA-12-3644,GBM,astrocytoma (glioblastoma),4,47,female,IDHwt,1818,Deceased,1,1
+TCGA-12-3646,GBM,astrocytoma (glioblastoma),4,59,female,IDHwt,1339,Deceased,1,2
+TCGA-12-3648,GBM,astrocytoma (glioblastoma),4,61,female,IDHwt,819,Deceased,1,2
+TCGA-12-3649,GBM,astrocytoma (glioblastoma),4,76,male,IDHwt,463,Deceased,1,2
+TCGA-12-3650,GBM,astrocytoma (glioblastoma),4,46,male,IDHwt,333,Deceased,1,2
+TCGA-12-3651,GBM,astrocytoma (glioblastoma),4,77,male,IDHwt,386,Deceased,1,2
+TCGA-12-3652,GBM,astrocytoma (glioblastoma),4,60,male,IDHwt,1062,Deceased,1,2
+TCGA-12-3653,GBM,astrocytoma (glioblastoma),4,34,female,IDHwt,442,Deceased,1,2
+TCGA-14-0783,GBM,astrocytoma (glioblastoma),4,36,female,NA,189,Deceased,1,2
+TCGA-14-0786,GBM,astrocytoma (glioblastoma),4,50,female,IDHwt,701,Deceased,1,2
+TCGA-14-0787,GBM,astrocytoma (glioblastoma),4,69,male,IDHwt,68,Deceased,1,2
+TCGA-14-0789,GBM,astrocytoma (glioblastoma),4,54,male,IDHwt,342,Deceased,1,1
+TCGA-14-0813,GBM,astrocytoma (glioblastoma),4,78,male,IDHwt,41,Deceased,1,1
+TCGA-14-0817,GBM,astrocytoma (glioblastoma),4,69,female,IDHwt,164,Deceased,1,2
+TCGA-14-0867,GBM,astrocytoma (glioblastoma),4,67,male,IDHwt,62,Deceased,1,2
+TCGA-14-0871,GBM,astrocytoma (glioblastoma),4,74,female,IDHwt,880,Deceased,1,2
+TCGA-14-1034,GBM,astrocytoma (glioblastoma),4,60,female,IDHwt,485,Deceased,1,1
+TCGA-14-1037,GBM,astrocytoma (glioblastoma),4,66,female,IDHwt,587,Deceased,1,2
+TCGA-14-1396,GBM,astrocytoma (glioblastoma),4,78,female,IDHwt,34,Deceased,1,1
+TCGA-14-1401,GBM,astrocytoma (glioblastoma),4,54,male,NA,114,Deceased,1,1
+TCGA-14-1402,GBM,astrocytoma (glioblastoma),4,58,female,NA,975,Deceased,1,2
+TCGA-14-1451,GBM,astrocytoma (glioblastoma),4,39,male,IDHwt,703,Deceased,1,2
+TCGA-14-1452,GBM,astrocytoma (glioblastoma),4,60,male,NA,216,Deceased,1,2
+TCGA-14-1453,GBM,astrocytoma (glioblastoma),4,69,male,IDHwt,35,Deceased,1,2
+TCGA-14-1454,GBM,astrocytoma (glioblastoma),4,54,female,NA,918,Deceased,1,2
+TCGA-14-1455,GBM,astrocytoma (glioblastoma),4,61,male,IDHwt,28,Deceased,1,1
+TCGA-14-1458,GBM,astrocytoma (glioblastoma),4,54,male,IDHmut-non-codel,203,Deceased,1,2
+TCGA-14-1459,GBM,astrocytoma (glioblastoma),4,63,female,NA,378,Deceased,1,2
+TCGA-14-1794,GBM,astrocytoma (glioblastoma),4,59,male,IDHwt,30,Deceased,1,2
+TCGA-14-1795,GBM,astrocytoma (glioblastoma),4,66,male,IDHwt,60,Deceased,1,2
+TCGA-14-1821,GBM,astrocytoma (glioblastoma),4,31,male,IDHmut-non-codel,541,Deceased,1,2
+TCGA-14-1823,GBM,astrocytoma (glioblastoma),4,58,female,IDHwt,543,Deceased,1,2
+TCGA-14-1825,GBM,astrocytoma (glioblastoma),4,70,male,IDHwt,232,Deceased,1,2
+TCGA-14-1827,GBM,astrocytoma (glioblastoma),4,51,male,IDHwt,179,Deceased,1,1
+TCGA-14-1829,GBM,astrocytoma (glioblastoma),4,57,male,IDHwt,218,Alive,1,2
+TCGA-15-0742,GBM,astrocytoma (glioblastoma),4,65,male,IDHwt,419,Deceased,1,2
+TCGA-15-1444,GBM,astrocytoma (glioblastoma),4,21,male,IDHmut-non-codel,1537,Deceased,1,2
+TCGA-15-1446,GBM,astrocytoma (glioblastoma),4,55,male,IDHwt,581,Alive,1,2
+TCGA-15-1447,GBM,astrocytoma (glioblastoma),4,36,female,NA,1618,Alive,1,2
+TCGA-15-1449,GBM,astrocytoma (glioblastoma),4,65,male,NA,404,Deceased,1,2
+TCGA-19-0955,GBM,astrocytoma (glioblastoma),4,71,male,NA,358,Alive,1,2
+TCGA-19-0964,GBM,astrocytoma (glioblastoma),4,70,male,NA,103,Alive,1,2
+TCGA-19-1386,GBM,astrocytoma (glioblastoma),4,51,male,IDHwt,276,Deceased,1,1
+TCGA-19-1387,GBM,astrocytoma (glioblastoma),4,81,male,IDHwt,181,Alive,1,1
+TCGA-19-1392,GBM,astrocytoma (glioblastoma),4,72,female,NA,111,Deceased,1,2
+TCGA-19-2619,GBM,astrocytoma (glioblastoma),4,55,female,IDHwt,294,Alive,1,2
+TCGA-19-2631,GBM,astrocytoma (glioblastoma),4,74,female,IDHwt,213,Deceased,1,1
+TCGA-19-5947,GBM,astrocytoma (glioblastoma),4,47,female,IDHwt,202,Deceased,1,2
+TCGA-19-5950,GBM,astrocytoma (glioblastoma),4,52,female,IDHwt,523,Deceased,1,2
+TCGA-19-5951,GBM,astrocytoma (glioblastoma),4,76,female,IDHwt,244,Deceased,1,2
+TCGA-19-5952,GBM,astrocytoma (glioblastoma),4,62,male,IDHwt,575,Deceased,1,2
+TCGA-19-5953,GBM,astrocytoma (glioblastoma),4,58,male,IDHwt,144,Deceased,1,2
+TCGA-19-5954,GBM,astrocytoma (glioblastoma),4,72,female,IDHwt,368,Deceased,1,1
+TCGA-19-5955,GBM,astrocytoma (glioblastoma),4,83,male,IDHwt,54,Deceased,1,2
+TCGA-19-5956,GBM,astrocytoma (glioblastoma),4,53,female,NA,684,Deceased,1,2
+TCGA-19-5958,GBM,astrocytoma (glioblastoma),4,56,male,IDHwt,428,Deceased,1,1
+TCGA-19-5959,GBM,astrocytoma (glioblastoma),4,77,female,IDHwt,511,Deceased,1,2
+TCGA-19-5960,GBM,astrocytoma (glioblastoma),4,56,male,IDHwt,455,Deceased,1,2
+TCGA-19-A60I,GBM,astrocytoma (glioblastoma),4,39,male,IDHwt,541,Alive,1,2
+TCGA-19-A6J5,GBM,astrocytoma (glioblastoma),4,40,male,IDHmut-non-codel,868,Alive,1,2
+TCGA-26-1438,GBM,astrocytoma (glioblastoma),4,36,male,NA,305,Alive,1,1
+TCGA-26-1439,GBM,astrocytoma (glioblastoma),4,63,male,IDHwt,422,Deceased,1,2
+TCGA-26-1440,GBM,astrocytoma (glioblastoma),4,48,male,NA,296,Alive,1,1
+TCGA-26-1442,GBM,astrocytoma (glioblastoma),4,43,male,IDHmut-non-codel,953,Alive,1,1
+TCGA-26-1443,GBM,astrocytoma (glioblastoma),4,60,female,NA,217,Alive,1,2
+TCGA-26-1799,GBM,astrocytoma (glioblastoma),4,68,male,IDHwt,285,Deceased,1,2
+TCGA-26-5132,GBM,astrocytoma (glioblastoma),4,74,male,IDHwt,286,Alive,1,2
+TCGA-26-5133,GBM,astrocytoma (glioblastoma),4,59,male,IDHwt,452,Alive,1,2
+TCGA-26-5134,GBM,astrocytoma (glioblastoma),4,74,male,IDHwt,167,Alive,1,1
+TCGA-26-5135,GBM,astrocytoma (glioblastoma),4,72,female,IDHwt,270,Deceased,1,1
+TCGA-26-5136,GBM,astrocytoma (glioblastoma),4,78,female,IDHwt,577,Deceased,1,2
+TCGA-26-5139,GBM,astrocytoma (glioblastoma),4,65,female,IDHwt,48,Alive,1,1
+TCGA-26-6173,GBM,astrocytoma (glioblastoma),4,57,male,IDHwt,241,Alive,1,2
+TCGA-26-6174,GBM,astrocytoma (glioblastoma),4,65,female,IDHwt,71,Alive,1,2
+TCGA-26-A7UX,GBM,astrocytoma (glioblastoma),4,47,male,IDHwt,588,Alive,1,2
+TCGA-27-1830,GBM,astrocytoma (glioblastoma),4,57,male,IDHwt,154,Deceased,1,2
+TCGA-27-1831,GBM,astrocytoma (glioblastoma),4,66,male,IDHwt,505,Deceased,1,1
+TCGA-27-1832,GBM,astrocytoma (glioblastoma),4,59,female,IDHwt,300,Deceased,1,2
+TCGA-27-1833,GBM,astrocytoma (glioblastoma),4,67,female,IDHwt,737,Deceased,1,2
+TCGA-27-1834,GBM,astrocytoma (glioblastoma),4,56,male,IDHwt,1233,Deceased,1,2
+TCGA-27-1835,GBM,astrocytoma (glioblastoma),4,53,female,IDHwt,648,Deceased,1,1
+TCGA-27-1836,GBM,astrocytoma (glioblastoma),4,33,female,IDHwt,914,Deceased,1,2
+TCGA-27-1837,GBM,astrocytoma (glioblastoma),4,36,male,IDHwt,427,Deceased,1,2
+TCGA-27-1838,GBM,astrocytoma (glioblastoma),4,59,female,IDHwt,350,Deceased,1,1
+TCGA-27-2518,GBM,astrocytoma (glioblastoma),4,52,male,IDHwt,753,Deceased,1,1
+TCGA-27-2519,GBM,astrocytoma (glioblastoma),4,48,male,IDHwt,550,Deceased,1,2
+TCGA-27-2521,GBM,astrocytoma (glioblastoma),4,34,male,IDHmut-non-codel,510,Deceased,1,2
+TCGA-27-2523,GBM,astrocytoma (glioblastoma),4,63,male,IDHwt,489,Deceased,1,2
+TCGA-27-2524,GBM,astrocytoma (glioblastoma),4,56,male,IDHwt,231,Deceased,1,1
+TCGA-27-2526,GBM,astrocytoma (glioblastoma),4,79,female,IDHwt,87,Deceased,1,2
+TCGA-27-2527,GBM,astrocytoma (glioblastoma),4,81,male,IDHwt,438,Deceased,1,1
+TCGA-27-2528,GBM,astrocytoma (glioblastoma),4,62,male,IDHwt,480,Deceased,1,2
+TCGA-28-1746,GBM,astrocytoma (glioblastoma),4,77,female,IDHwt,6,Alive,1,1
+TCGA-28-1749,GBM,astrocytoma (glioblastoma),4,73,male,IDHwt,280,Alive,1,1
+TCGA-28-1750,GBM,astrocytoma (glioblastoma),4,40,female,IDHwt,254,Alive,1,2
+TCGA-28-1751,GBM,astrocytoma (glioblastoma),4,61,female,IDHwt,232,Alive,1,2
+TCGA-28-1752,GBM,astrocytoma (glioblastoma),4,42,female,IDHwt,258,Alive,1,2
+TCGA-28-1755,GBM,astrocytoma (glioblastoma),4,52,female,IDHwt,47,Deceased,1,2
+TCGA-28-1757,GBM,astrocytoma (glioblastoma),4,71,male,IDHwt,4,Alive,1,2
+TCGA-28-1760,GBM,astrocytoma (glioblastoma),4,48,male,NA,143,Alive,1,1
+TCGA-41-2572,GBM,astrocytoma (glioblastoma),4,67,male,IDHwt,406,Deceased,1,1
+TCGA-41-2573,GBM,astrocytoma (glioblastoma),4,59,male,IDHwt,272,Alive,1,2
+TCGA-41-2575,GBM,astrocytoma (glioblastoma),4,75,male,IDHwt,290,Deceased,1,2
+TCGA-41-3392,GBM,astrocytoma (glioblastoma),4,88,male,IDHwt,30,Deceased,1,2
+TCGA-41-3393,GBM,astrocytoma (glioblastoma),4,81,female,IDHwt,135,Deceased,1,1
+TCGA-41-3915,GBM,astrocytoma (glioblastoma),4,48,male,IDHwt,360,Deceased,1,1
+TCGA-41-4097,GBM,astrocytoma (glioblastoma),4,63,female,IDHwt,6,Deceased,1,1
+TCGA-41-5651,GBM,astrocytoma (glioblastoma),4,59,female,IDHwt,460,Deceased,1,2
+TCGA-4W-AA9S,GBM,astrocytoma (glioblastoma),4,69,male,IDHwt,44,Alive,1,1
+TCGA-4W-AA9T,GBM,astrocytoma (glioblastoma),4,54,female,IDHwt,778,Alive,1,2
+TCGA-81-5910,GBM,astrocytoma (glioblastoma),4,64,male,IDHwt,49,Deceased,1,2
+TCGA-81-5911,GBM,astrocytoma (glioblastoma),4,33,male,IDHwt,539,Alive,1,1
+TCGA-87-5896,GBM,astrocytoma (glioblastoma),4,50,female,IDHwt,800,Alive,1,2
+TCGA-OX-A56R,GBM,astrocytoma (glioblastoma),4,68,male,IDHwt,180,Deceased,1,2
+TCGA-RR-A6KA,GBM,astrocytoma (glioblastoma),4,72,female,IDHwt,191,Deceased,1,1
+TCGA-HT-A61B,LGG,NA,NA,NA,NA,IDHmut-non-codel,533,Alive,1,2
+TCGA-HT-A74K,LGG,NA,NA,NA,NA,IDHmut-codel,467,Alive,1,1
+TCGA-HT-A74L,LGG,NA,NA,NA,NA,IDHmut-codel,336,Alive,1,2
+TCGA-RR-A6KB,GBM,NA,NA,NA,NA,IDHwt,0,Alive,1,2
+TCGA-RY-A83X,LGG,NA,NA,NA,NA,IDHmut-codel,939,Alive,1,1
+TCGA-RY-A83Y,LGG,NA,NA,NA,NA,IDHmut-codel,166,Alive,1,2
+TCGA-RY-A83Z,LGG,NA,NA,NA,NA,IDHmut-non-codel,301,Alive,1,1
+TCGA-RY-A840,LGG,NA,NA,NA,NA,IDHmut-codel,854,Alive,1,1
+TCGA-RY-A843,LGG,NA,NA,NA,NA,IDHmut-non-codel,63,Alive,1,1
+TCGA-RY-A845,LGG,NA,NA,NA,NA,IDHmut-non-codel,596,Alive,1,1
+TCGA-RY-A847,LGG,NA,NA,NA,NA,IDHmut-codel,933,Alive,1,1
+TCGA-TQ-A7RF,LGG,NA,NA,NA,NA,IDHmut-non-codel,650,Alive,1,1
+TCGA-TQ-A7RG,LGG,NA,NA,NA,NA,IDHmut-codel,599,Alive,1,1
+TCGA-TQ-A7RH,LGG,NA,NA,NA,NA,IDHmut-non-codel,486,Alive,1,1
+TCGA-TQ-A7RI,LGG,NA,NA,NA,NA,IDHmut-codel,62,Alive,1,1
+TCGA-TQ-A7RJ,LGG,NA,NA,NA,NA,IDHmut-non-codel,1229,Alive,1,1
+TCGA-TQ-A7RK,LGG,NA,NA,NA,NA,IDHmut-non-codel,1341,Alive,2,2
+TCGA-TQ-A7RN,LGG,NA,NA,NA,NA,IDHmut-codel,1026,Alive,1,1
+TCGA-TQ-A7RO,LGG,NA,NA,NA,NA,IDHmut-codel,949,Alive,1,1
+TCGA-TQ-A7RP,LGG,NA,NA,NA,NA,IDHwt,914,Alive,1,1
+TCGA-TQ-A7RQ,LGG,NA,NA,NA,NA,IDHmut-codel,795,Alive,1,1
+TCGA-TQ-A7RR,LGG,NA,NA,NA,NA,IDHmut-non-codel,787,Alive,1,1
+TCGA-TQ-A7RU,LGG,NA,NA,NA,NA,IDHmut-codel,1032,Alive,1,1
+TCGA-TQ-A7RV,LGG,NA,NA,NA,NA,IDHmut-non-codel,1868,Alive,2,2
+TCGA-TQ-A7RW,LGG,NA,NA,NA,NA,IDHmut-non-codel,821,Deceased,1,1
+TCGA-TQ-A8XE,LGG,NA,NA,NA,NA,IDHmut-non-codel,954,Deceased,2,2
+TCGA-VM-A8CF,LGG,NA,NA,NA,NA,IDHmut-non-codel,609,Alive,8,8
+TCGA-WY-A859,LGG,NA,NA,NA,NA,IDHmut-non-codel,1213,Alive,1,1
+TCGA-WY-A85A,LGG,NA,NA,NA,NA,IDHmut-non-codel,1320,Alive,1,1
+TCGA-WY-A85B,LGG,NA,NA,NA,NA,IDHmut-non-codel,1393,Alive,1,1
+TCGA-WY-A85C,LGG,NA,NA,NA,NA,IDHmut-non-codel,1426,Alive,1,1
+TCGA-WY-A85D,LGG,NA,NA,NA,NA,IDHmut-non-codel,1147,Alive,1,1
+TCGA-WY-A85E,LGG,NA,NA,NA,NA,IDHmut-non-codel,633,Alive,1,1

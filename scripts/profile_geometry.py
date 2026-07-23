@@ -79,13 +79,25 @@ def _geometry_from_eigs(mu_min, mu_max):
     return sigma_max, kappa_at, pd_ok
 
 
-def _geom_record(grad_norm, mu_min, mu_max):
+def _geom_record(grad_norm, mu_min, mu_max, softmax=None):
+    """softmax: optional dict(conf, pred, p_target) recorded for free from the clean
+    forward already done to get the gradient. Enables the B2b confidence baseline
+    (does the geometry descriptor add signal beyond the model's own confidence?)
+    without a separate eval re-run."""
+    base = dict(softmax=softmax) if softmax is not None else {}
     if mu_min is None or mu_max is None or not np.isfinite(mu_min) or not np.isfinite(mu_max):
         return dict(grad_norm=grad_norm, mu_min=None, mu_max=None, sigma_max=None,
-                    kappa_at_lambda=None, pd_ok=None)
+                    kappa_at_lambda=None, pd_ok=None, **base)
     sigma_max, kappa_at, pd_ok = _geometry_from_eigs(mu_min, mu_max)
     return dict(grad_norm=grad_norm, mu_min=mu_min, mu_max=mu_max, sigma_max=sigma_max,
-                kappa_at_lambda=kappa_at, pd_ok=bool(pd_ok))
+                kappa_at_lambda=kappa_at, pd_ok=bool(pd_ok), **base)
+
+
+def _softmax_fields(logits):
+    """(conf=max prob, pred=argmax, p_target=prob of class TARGET) from clean logits."""
+    probs = torch.softmax(logits.detach().float(), dim=1)[0]
+    return dict(conf=float(probs.max()), pred=int(probs.argmax()),
+                p_target=float(probs[TARGET]))
 
 
 # --------------------------------------------------------------- per-model subject profilers
@@ -97,7 +109,7 @@ def _profile_stagin_subject(model, v1, a1, t1, endpoints, k, seed_offset):
     grad_graph = torch.autograd.grad(loss, v1, create_graph=True, retain_graph=True)[0]
     grad_norm = float(grad_graph.detach().norm().item())
     mu_min, mu_max = _extreme_eigs(grad_graph, v1, k, seed_offset)
-    return _geom_record(grad_norm, mu_min, mu_max)
+    return _geom_record(grad_norm, mu_min, mu_max, softmax=_softmax_fields(logits))
 
 
 def _profile_ecg_subject(model, x1, k, seed_offset):
@@ -108,7 +120,7 @@ def _profile_ecg_subject(model, x1, k, seed_offset):
     grad_graph = torch.autograd.grad(loss, x1, create_graph=True, retain_graph=True)[0]
     grad_norm = float(grad_graph.detach().norm().item())
     mu_min, mu_max = _extreme_eigs(grad_graph, x1, k, seed_offset)
-    return _geom_record(grad_norm, mu_min, mu_max)
+    return _geom_record(grad_norm, mu_min, mu_max, softmax=_softmax_fields(logits))
 
 
 # --------------------------------------------------------------------------- pool + I/O

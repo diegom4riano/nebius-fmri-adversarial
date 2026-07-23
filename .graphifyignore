@@ -1,0 +1,23 @@
+# graphify indexes source regardless of .gitignore (build config gitignore=false),
+# so scripts/clinical/ stays in the graph even though git ignores it. Re-exclude the
+# heavy / non-source paths here so the graph stays code-focused.
+.venv/
+venv/
+.git/
+.claude/
+.vscode/
+.idea/
+__pycache__/
+.mypy_cache/
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+data/
+output/
+logs/
+figures/
+graphify-out/
+HCP_S1200_Atlas_Z4_pkXDZ/
+paper_export/
+.DS_Store
